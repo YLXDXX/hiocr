@@ -19,7 +19,6 @@ class MainWindow : public QMainWindow
 public:
     explicit MainWindow(QWidget* parent = nullptr);
     ~MainWindow();
-
     void loadImageFromFile(const QString& path);
 
 protected:
@@ -39,14 +38,20 @@ private slots:
 
     void takeScreenshot();
     void onSetScreenshotShortcut();
+    void onSetTextRecognizeShortcut();
+    void onSetFormulaRecognizeShortcut();
+    void onSetTableRecognizeShortcut();
 
     void onGlobalShortcutActivated(const QString& id);
     void onTrayIconActivated(QSystemTrayIcon::ActivationReason reason);
 
-    // 新增：托盘菜单特定的截图槽函数
     void onTrayTextRecognize();
     void onTrayFormulaRecognize();
     void onTrayTableRecognize();
+
+    void onQuickTextRecognize();
+    void onQuickFormulaRecognize();
+    void onQuickTableRecognize();
 
 private:
     void setupUi();
@@ -54,6 +59,7 @@ private:
     void performRecognition(const QString& prompt);
     void setupGlobalShortcuts();
     void createTrayIcon();
+    void setShortcutForKey(const QString& key, QString& currentKey);
 
     ImageViewWidget* m_imageView;
     MarkdownRenderer* m_markdownRenderer;
@@ -67,12 +73,18 @@ private:
     QTimer* m_autoRecognizeDebounceTimer;
 
     QShortcut* m_screenshotShortcut;
+    QShortcut* m_textShortcut;
+    QShortcut* m_formulaShortcut;
+    QShortcut* m_tableShortcut;
+
     QString m_screenshotShortcutKey;
+    QString m_textRecognizeShortcutKey;
+    QString m_formulaRecognizeShortcutKey;
+    QString m_tableRecognizeShortcutKey;
 
     ScreenshotManager* m_screenshotManager;
     QSystemTrayIcon* m_trayIcon;
 
-    // 新增：用于临时覆盖下一次识别的提示词
     QString m_tempPromptOverride;
 };
 
