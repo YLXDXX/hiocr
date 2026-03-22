@@ -1,3 +1,7 @@
+#
+build/
+repomix-output.xml
+
 # ---> C++
 # Prerequisites
 *.d
