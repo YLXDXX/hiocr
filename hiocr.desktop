@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=hiocr
+Exec=hiocr
+Icon=hiocr
+StartupWMClass=hiocr
+Categories=Utility;
+Terminal=false

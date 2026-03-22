@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <script src="qrc:/resources/marked.min.js"></script>
+    <link rel="stylesheet" href="qrc:/resources/temml/Temml-Latin-Modern.css">
+    <script src="qrc:/resources/temml/temml.min.js"></script>
+    <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+        <style>
+    html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        font-family: sans-serif;
+        font-size: 20px;
+        overflow-y: auto;        /* 滚动条在 body 上，自适应高度 */
+        word-wrap: break-word;    /* 确保长单词或 URL 换行 */
+    }
+    #content {
+    width: 95%;           /* 小窗口时占 90% */
+    max-width: 1200px;    /* 大窗口时不超过 1200px */
+    margin: 15px auto;
+    padding: 0 15px;
+    line-height: 1.5;
+    box-sizing: border-box;
+    }
+    .error {
+        color: #d9534f;
+        background: #f9f2f4;
+        padding: 10px;
+        border-radius: 4px;
+        font-family: monospace;
+    }
+    </style>
+</head>
+<body>
+    <div id="content"></div>
+
+    <script>
+        (function() {
+            // 高级数学公式扩展（保持原有功能）
+            const mathExtension = {
+                name: 'math',
+                level: 'inline',
+                start(src) { return src.indexOf('$'); },
+                tokenizer(src) {
+                    const blockMatch = src.match(/^\$\$\s*([\s\S]+?)\s*\$\$/);
+                    if (blockMatch) {
+                        return {
+                            type: 'math',
+                            raw: blockMatch[0],
+                            text: blockMatch[0],
+                            display: true
+                        };
+                    }
+                    const inlineMatch = src.match(/^\$((?:[^\$]|\\\$)+?)\$/);
+                    if (inlineMatch) {
+                        return {
+                            type: 'math',
+                            raw: inlineMatch[0],
+                            text: inlineMatch[0],
+                            display: false
+                        };
+                    }
+                    return;
+                },
+                renderer(token) {
+                    return token.text;
+                }
+            };
+
+            marked.use({ extensions: [mathExtension] });
+
+            // 渲染函数：接收原始 markdown 字符串，执行渲染
+            function renderMarkdown(markdown) {
+                const contentDiv = document.getElementById('content');
+                if (!markdown) {
+                    contentDiv.innerHTML = '';
+                    return;
+                }
+
+                // 用 marked 解析 Markdown
+                const rawHtml = marked.parse(markdown);
+                contentDiv.innerHTML = rawHtml;
+
+                // 用 Temml 渲染数学公式
+                try {
+                    temml.renderMathInElement(contentDiv, {
+                        delimiters: [
+                            { left: '$$', right: '$$', display: true },
+                            { left: '$', right: '$', display: false },
+                            { left: '\\(', right: '\\)', display: false },
+                            { left: '\\[', right: '\\]', display: true }
+                        ],
+                        trust: true,
+                        macros: {}
+                    });
+                } catch (e) {
+                    console.error('Temml Render Error:', e);
+                    const errorMsg = document.createElement('div');
+                    errorMsg.className = 'error';
+                    errorMsg.innerHTML = 'Math Error: ' + e.message;
+                    contentDiv.prepend(errorMsg);
+                }
+            }
+
+            // 建立 WebChannel 连接，监听 bridge 的 markdownChanged 信号
+            new QWebChannel(qt.webChannelTransport, function(channel) {
+                window.bridge = channel.objects.bridge; // 可选，挂载到全局便于调试
+                bridge.markdownChanged.connect(function(markdown) {
+                    renderMarkdown(markdown);
+                });
+            });
+        })();
+    </script>
+</body>
+</html>

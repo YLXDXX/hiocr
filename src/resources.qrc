@@ -1,0 +1,24 @@
+<RCC>
+    <qresource prefix="/">
+        <file>resources/markdown_renderer.html</file>
+        <file>resources/marked.min.js</file>
+        <file>resources/temml/Asana-Math.woff2</file>
+        <file>resources/temml/copy-tex.min.js</file>
+        <file>resources/temml/latinmodernmath.woff2</file>
+        <file>resources/temml/LibertinusMath-Regular.woff2</file>
+        <file>resources/temml/mhchem.min.js</file>
+        <file>resources/temml/NotoSansMath-Regular.ttf</file>
+        <file>resources/temml/physics.js</file>
+        <file>resources/temml/STIXTwoMath.woff2</file>
+        <file>resources/temml/Temml-Asana.css</file>
+        <file>resources/temml/Temml-Latin-Modern.css</file>
+        <file>resources/temml/Temml-Libertinus.css</file>
+        <file>resources/temml/Temml-Local.css</file>
+        <file>resources/temml/temml.min.js</file>
+        <file>resources/temml/Temml-NotoSans.css</file>
+        <file>resources/temml/temmlPostProcess.js</file>
+        <file>resources/temml/Temml-STIX2.css</file>
+        <file>resources/temml/Temml.woff2</file>
+        <file>resources/temml/texvc.js</file>
+    </qresource>
+</RCC>
