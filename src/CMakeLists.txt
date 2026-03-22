@@ -58,5 +58,3 @@ target_link_libraries(hiocr
     Qt6::DBus
     hiocr_lib
 )
-
-install(TARGETS hiocr RUNTIME DESTINATION bin)
