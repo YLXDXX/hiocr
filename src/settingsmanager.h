@@ -20,6 +20,7 @@ public:
     QString textRecognizeShortcut() const;
     QString formulaRecognizeShortcut() const;
     QString tableRecognizeShortcut() const;
+
     void setScreenshotShortcut(const QString& key);
     void setTextRecognizeShortcut(const QString& key);
     void setFormulaRecognizeShortcut(const QString& key);
@@ -28,13 +29,6 @@ public:
     // 行为设置
     bool autoUseLastPrompt() const;
     void setAutoUseLastPrompt(bool enabled);
-
-    // 默认值常量
-    static const QString DefaultServerUrl;
-    static const QString DefaultScreenshotShortcut;
-    static const QString DefaultTextShortcut;
-    static const QString DefaultFormulaShortcut;
-    static const QString DefaultTableShortcut;
 
 signals:
     void serverUrlChanged(const QString& url);

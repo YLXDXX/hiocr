@@ -21,6 +21,7 @@
 #include <QTextStream>
 #include <QInputDialog>
 #include <QLineEdit>
+#include <QKeyEvent>
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
 {
@@ -67,6 +68,7 @@ void MainWindow::setupUi()
     m_pasteShortcut->setContext(Qt::ApplicationShortcut);
 }
 
+
 void MainWindow::setupMenuBar()
 {
     QMenuBar* menuBar = new QMenuBar(this);
@@ -89,7 +91,6 @@ void MainWindow::setupMenuBar()
                 }
             }
         });
-        // 【修复问题2】添加截图选项
         fileMenu->addAction("截图", this, [this](){
             emit screenshotRequested();
         });
@@ -98,40 +99,10 @@ void MainWindow::setupMenuBar()
 
         // --- 设置菜单 ---
         QMenu* settingsMenu = menuBar->addMenu("设置");
-
-        // 服务器设置
-        settingsMenu->addAction("设置服务器地址", this, [this](){
-            bool ok;
-            SettingsManager* s = SettingsManager::instance();
-            QString url = QInputDialog::getText(this, "服务器地址", "URL:", QLineEdit::Normal, s->serverUrl(), &ok);
-            if (ok) s->setServerUrl(url);
+        // 【修改】不再直接弹出输入框，而是发射信号通知 AppController 打开设置窗口
+        settingsMenu->addAction("首选项", this, [this](){
+            emit settingsTriggered();
         });
-
-            settingsMenu->addSeparator();
-
-            // 【修复问题1】找回快捷键设置逻辑
-            auto addShortcutAction = [this, settingsMenu](const QString& name, std::function<QString()> getter, std::function<void(const QString&)> setter) {
-                settingsMenu->addAction(name, this, [this, name, getter, setter](){
-                    bool ok;
-                    QString current = getter();
-                    QString key = QInputDialog::getText(this, "设置快捷键", name + " (如 Ctrl+Shift+S):", QLineEdit::Normal, current, &ok);
-                    if (ok && !key.isEmpty()) {
-                        setter(key);
-                    }
-                });
-            };
-
-            SettingsManager* s = SettingsManager::instance();
-            addShortcutAction("设置截图快捷键", [s](){ return s->screenshotShortcut(); }, [s](const QString& k){ s->setScreenshotShortcut(k); });
-            addShortcutAction("设置文字识别快捷键", [s](){ return s->textRecognizeShortcut(); }, [s](const QString& k){ s->setTextRecognizeShortcut(k); });
-            addShortcutAction("设置公式识别快捷键", [s](){ return s->formulaRecognizeShortcut(); }, [s](const QString& k){ s->setFormulaRecognizeShortcut(k); });
-            addShortcutAction("设置表格识别快捷键", [s](){ return s->tableRecognizeShortcut(); }, [s](const QString& k){ s->setTableRecognizeShortcut(k); });
-
-            settingsMenu->addSeparator();
-            QAction* autoUseAction = settingsMenu->addAction("自动使用上次识别类型");
-            autoUseAction->setCheckable(true);
-            autoUseAction->setChecked(s->autoUseLastPrompt());
-            connect(autoUseAction, &QAction::toggled, s, &SettingsManager::setAutoUseLastPrompt);
 }
 
 void MainWindow::setupConnections()
@@ -186,6 +157,18 @@ void MainWindow::startAreaSelection(const QImage& fullImage) {
 }
 
 // --- 事件处理 ---
+void MainWindow::keyPressEvent(QKeyEvent *event)
+{
+    // 如果按下 ESC 键，调用 close()
+    // 这会触发 closeEvent，进而执行 hide() 隐藏窗口
+    if (event->key() == Qt::Key_Escape) {
+        close();
+        event->accept(); // 事件已处理，不再向下传递
+    } else {
+        // 其他按键按默认方式处理
+        QMainWindow::keyPressEvent(event);
+    }
+}
 
 void MainWindow::closeEvent(QCloseEvent *event) {
     event->ignore();

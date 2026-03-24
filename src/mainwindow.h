@@ -22,32 +22,31 @@ public:
     void setRecognitionResult(const QString& markdown);
     void showError(const QString& message);
     void setBusy(bool busy);
-    void setPrompt(const QString& prompt); // 【新增】设置提示词
+    void setPrompt(const QString& prompt);
     void startAreaSelection(const QImage& fullImage);
 
 signals:
-    // 用户意图信号
     void recognizeRequested(const QString& prompt, const QString& base64Image);
     void imagePasted(const QImage& image);
     void areaSelected(const QRect& rect);
     void settingsTriggered();
-    void screenshotRequested(); // 【新增】菜单栏截图请求
+    void screenshotRequested();
 
 protected:
+    // 【新增】重写按键事件
+    void keyPressEvent(QKeyEvent *event) override;
     void closeEvent(QCloseEvent *event) override;
 
 private slots:
     void onPasteImage();
     void onMarkdownSourceChanged();
-
-    // 【新增】处理 PromptBar 的信号
     void onPromptBarRecognize();
     void onPromptBarAutoRecognize(const QString& prompt);
 
 private:
     void setupUi();
     void setupConnections();
-    void setupMenuBar(); // 【新增】独立出菜单构建函数
+    void setupMenuBar();
 
     // UI 组件
     ImageViewWidget* m_imageView;

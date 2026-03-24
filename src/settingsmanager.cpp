@@ -1,10 +1,5 @@
 #include "settingsmanager.h"
-
-const QString SettingsManager::DefaultServerUrl = "http://localhost:8080/v1/chat/completions";
-const QString SettingsManager::DefaultScreenshotShortcut = "Ctrl+Shift+S";
-const QString SettingsManager::DefaultTextShortcut = "Ctrl+Shift+T";
-const QString SettingsManager::DefaultFormulaShortcut = "Ctrl+Shift+F";
-const QString SettingsManager::DefaultTableShortcut = "Ctrl+Shift+B";
+#include "constants.h" // 引入常量
 
 SettingsManager* SettingsManager::instance()
 {
@@ -18,7 +13,8 @@ SettingsManager::SettingsManager(QObject* parent) : QObject(parent)
 }
 
 QString SettingsManager::serverUrl() const {
-    return m_settings.value("server/url", DefaultServerUrl).toString();
+    // 使用 Constants 命名空间
+    return m_settings.value("server/url", Constants::DEFAULT_SERVER_URL).toString();
 }
 
 void SettingsManager::setServerUrl(const QString& url) {
@@ -29,21 +25,22 @@ void SettingsManager::setServerUrl(const QString& url) {
 }
 
 QString SettingsManager::screenshotShortcut() const {
-    return m_settings.value("shortcuts/screenshot", DefaultScreenshotShortcut).toString();
+    return m_settings.value("shortcuts/screenshot", Constants::SHORTCUT_SCREENSHOT).toString();
 }
 
 QString SettingsManager::textRecognizeShortcut() const {
-    return m_settings.value("shortcuts/text_recognize", DefaultTextShortcut).toString();
+    return m_settings.value("shortcuts/text_recognize", Constants::SHORTCUT_TEXT).toString();
 }
 
 QString SettingsManager::formulaRecognizeShortcut() const {
-    return m_settings.value("shortcuts/formula_recognize", DefaultFormulaShortcut).toString();
+    return m_settings.value("shortcuts/formula_recognize", Constants::SHORTCUT_FORMULA).toString();
 }
 
 QString SettingsManager::tableRecognizeShortcut() const {
-    return m_settings.value("shortcuts/table_recognize", DefaultTableShortcut).toString();
+    return m_settings.value("shortcuts/table_recognize", Constants::SHORTCUT_TABLE).toString();
 }
 
+// Setters 保持不变
 void SettingsManager::setScreenshotShortcut(const QString& key) {
     m_settings.setValue("shortcuts/screenshot", key);
     emit shortcutsChanged();

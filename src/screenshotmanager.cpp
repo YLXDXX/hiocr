@@ -22,6 +22,7 @@ void ScreenshotManager::takeScreenshot()
     requestViaPortal();
 }
 
+
 void ScreenshotManager::requestViaPortal()
 {
     if (!QDBusConnection::sessionBus().isConnected()) {
@@ -40,30 +41,38 @@ void ScreenshotManager::requestViaPortal()
     }
 
     QVariantMap options;
-    options["interactive"] = false;   // 让用户选择区域或窗口
+    options["interactive"] = false;
     options["modal"] = true;
     options["image_format"] = "png";
-    options["handle_cursor"] = false; // 设置为 false 以隐藏截图中的鼠标光标
-    options["include_cursor"] = false; // 尝试此备选键值
+    options["handle_cursor"] = false;
+    options["include_cursor"] = false;
 
+    // 【修改】使用 asyncCall 替代 call + waitForFinished
+    QDBusPendingReply<QDBusObjectPath> reply = portal.asyncCall("Screenshot", "", options);
 
-    QDBusPendingReply<QDBusObjectPath> reply = portal.call("Screenshot", "", options);
-    reply.waitForFinished();
+    // 使用 Watcher 监听异步结果
+    QDBusPendingCallWatcher* watcher = new QDBusPendingCallWatcher(reply, this);
+    connect(watcher, &QDBusPendingCallWatcher::finished, this, [this](QDBusPendingCallWatcher* self){
+        self->deleteLater();
+        QDBusPendingReply<QDBusObjectPath> reply = *self;
 
-    if (reply.isError()) {
-        fallbackScreenshot();
-        return;
-    }
+        if (reply.isError()) {
+            qWarning() << "Portal screenshot failed:" << reply.error().message();
+            fallbackScreenshot();
+            return;
+        }
 
-    QDBusObjectPath path = reply.value();
-    QDBusConnection::sessionBus().connect(
-        "org.freedesktop.portal.Desktop",
-        path.path(),
-        "org.freedesktop.portal.Request",
-        "Response",
-        this,
-        SLOT(onPortalResponse(uint,QVariantMap))
-    );
+        QDBusObjectPath path = reply.value();
+        // 连接 Response 信号
+        QDBusConnection::sessionBus().connect(
+            "org.freedesktop.portal.Desktop",
+            path.path(),
+                                              "org.freedesktop.portal.Request",
+                                              "Response",
+                                              this,
+                                              SLOT(onPortalResponse(uint,QVariantMap))
+        );
+    });
 }
 
 void ScreenshotManager::onPortalResponse(uint response, const QVariantMap& results)

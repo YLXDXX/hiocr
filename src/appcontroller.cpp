@@ -6,6 +6,8 @@
 #include "traymanager.h"
 #include "shortcuthandler.h"
 #include "imageprocessor.h"
+#include "settingsdialog.h" // 新增
+#include "constants.h"      // 新增
 
 #include <QApplication>
 #include <QTimer>
@@ -110,6 +112,12 @@ void AppController::setupConnections()
     connect(m_mainWindow, &MainWindow::settingsTriggered, this, [](){
         qDebug() << "Settings menu interaction";
     });
+
+    // 【新增】连接设置窗口请求
+    connect(m_mainWindow, &MainWindow::settingsTriggered, this, [this](){
+        SettingsDialog dialog(m_mainWindow);
+        dialog.exec(); // 模态运行
+    });
 }
 
 // --- 动作实现 ---
@@ -119,25 +127,24 @@ void AppController::takeScreenshot() {
     m_screenshotManager->takeScreenshot();
 }
 
-// 【修复问题4】更新 UI 提示词并设置内部变量
 void AppController::takeTextRecognizeScreenshot() {
-    QString prompt = "文字识别:";
+    QString prompt = Constants::PROMPT_TEXT;
     m_pendingPromptOverride = prompt;
-    m_mainWindow->setPrompt(prompt); // 更新 UI
+    m_mainWindow->setPrompt(prompt);
     m_screenshotManager->takeScreenshot();
 }
 
 void AppController::takeFormulaRecognizeScreenshot() {
-    QString prompt = "公式识别:";
+    QString prompt = Constants::PROMPT_FORMULA;
     m_pendingPromptOverride = prompt;
-    m_mainWindow->setPrompt(prompt); // 更新 UI
+    m_mainWindow->setPrompt(prompt);
     m_screenshotManager->takeScreenshot();
 }
 
 void AppController::takeTableRecognizeScreenshot() {
-    QString prompt = "表格识别:";
+    QString prompt = Constants::PROMPT_TABLE;
     m_pendingPromptOverride = prompt;
-    m_mainWindow->setPrompt(prompt); // 更新 UI
+    m_mainWindow->setPrompt(prompt);
     m_screenshotManager->takeScreenshot();
 }
 

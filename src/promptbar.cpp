@@ -1,4 +1,6 @@
 #include "promptbar.h"
+#include "constants.h" // 新增
+
 #include <QHBoxLayout>
 #include <QLabel>
 
@@ -75,21 +77,18 @@ void PromptBar::setButtonsBusy(bool busy)
 
 void PromptBar::onTextButton()
 {
-    QString newPrompt = "文字识别:";
-    setPrompt(newPrompt);
-    emit autoRecognizeRequested(newPrompt);
+    setPrompt(Constants::PROMPT_TEXT);
+    emit autoRecognizeRequested(Constants::PROMPT_TEXT);
 }
 
 void PromptBar::onFormulaButton()
 {
-    QString newPrompt = "公式识别:";
-    setPrompt(newPrompt);
-    emit autoRecognizeRequested(newPrompt);
+    setPrompt(Constants::PROMPT_FORMULA);
+    emit autoRecognizeRequested(Constants::PROMPT_FORMULA);
 }
 
 void PromptBar::onTableButton()
 {
-    QString newPrompt = "表格识别:";
-    setPrompt(newPrompt);
-    emit autoRecognizeRequested(newPrompt);
+    setPrompt(Constants::PROMPT_TABLE);
+    emit autoRecognizeRequested(Constants::PROMPT_TABLE);
 }

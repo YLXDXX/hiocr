@@ -29,10 +29,11 @@ set(APP_SOURCES
     screenshotareaselector.cpp
     screenshotmanager.cpp
     globalshortcutmanager.cpp
-    traymanager.cpp          # 移动到这里 (依赖 QSystemTrayIcon -> Widgets)
-    recognitionmanager.cpp   # 移动到这里 (虽然不直接依赖 Widgets，但通常作为 App 层逻辑)
-    appcontroller.cpp       # 新增
-    shortcuthandler.cpp     # 新增
+    traymanager.cpp
+    recognitionmanager.cpp
+    appcontroller.cpp
+    shortcuthandler.cpp
+    settingsdialog.cpp
 )
 
 set(APP_HEADERS
@@ -45,8 +46,10 @@ set(APP_HEADERS
     screenshotareaselector.h
     screenshotmanager.h
     globalshortcutmanager.h
-    traymanager.h            # 移动到这里
-    recognitionmanager.h     # 移动到这里
+    traymanager.h
+    recognitionmanager.h
+    settingsdialog.h
+    constants.h
 )
 
 # 如果 KF6GlobalAccel 可用，则添加 KGlobalAccel 支持
