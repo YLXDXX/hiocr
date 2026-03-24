@@ -1,19 +1,24 @@
 # 核心库源文件
+# 注意：这里只放不依赖 Widgets 的基础类
 set(LIB_SOURCES
     networkmanager.cpp
     imageprocessor.cpp
+    settingsmanager.cpp      # 保留在这里，因为它只用到 QSettings (QtCore)
 )
 
 set(LIB_HEADERS
     networkmanager.h
     imageprocessor.h
+    settingsmanager.h        # 保留在这里
 )
 
 add_library(hiocr_lib STATIC ${LIB_SOURCES} ${LIB_HEADERS})
+# 核心库不需要链接 Widgets
 target_link_libraries(hiocr_lib Qt6::Core Qt6::Network Qt6::Gui)
 target_include_directories(hiocr_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 # 主程序源文件
+# 注意：这里放所有依赖 Widgets 或业务逻辑紧密相关的类
 set(APP_SOURCES
     main.cpp
     mainwindow.cpp
@@ -24,6 +29,8 @@ set(APP_SOURCES
     screenshotareaselector.cpp
     screenshotmanager.cpp
     globalshortcutmanager.cpp
+    traymanager.cpp          # 移动到这里 (依赖 QSystemTrayIcon -> Widgets)
+    recognitionmanager.cpp   # 移动到这里 (虽然不直接依赖 Widgets，但通常作为 App 层逻辑)
 )
 
 set(APP_HEADERS
@@ -36,6 +43,8 @@ set(APP_HEADERS
     screenshotareaselector.h
     screenshotmanager.h
     globalshortcutmanager.h
+    traymanager.h            # 移动到这里
+    recognitionmanager.h     # 移动到这里
 )
 
 # 如果 KF6GlobalAccel 可用，则添加 KGlobalAccel 支持

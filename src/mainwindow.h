@@ -3,14 +3,15 @@
 
 #include <QMainWindow>
 #include <QShortcut>
-#include <QSystemTrayIcon>
 
 class ImageViewWidget;
 class MarkdownRenderer;
 class MarkdownSourceEditor;
 class PromptBar;
-class NetworkManager;
 class ScreenshotManager;
+class SettingsManager;
+class TrayManager;
+class RecognitionManager;
 
 class MainWindow : public QMainWindow
 {
@@ -26,66 +27,50 @@ protected:
     void keyPressEvent(QKeyEvent *event) override;
 
 private slots:
-    void onRecognize();
-    void onAutoRecognize(const QString& prompt);
-    void onRequestFinished(const QString& result, bool success, const QString& error);
+    // UI 响应槽
+    void onPasteImage();
     void onMarkdownSourceChanged();
-    void pasteImage();
-    void onImageChanged();
-    void onAutoUseLastPromptToggled(bool checked);
-    void openImageFile();
-    void saveMarkdownAsFile();
 
-    void takeScreenshot();
-    void onSetScreenshotShortcut();
-    void onSetTextRecognizeShortcut();
-    void onSetFormulaRecognizeShortcut();
-    void onSetTableRecognizeShortcut();
+    // 业务逻辑槽（由 Manager 触发）
+    void onRecognitionFinished(const QString& result);
+    void onRecognitionFailed(const QString& error);
+    void onBusyChanged(bool busy);
 
-    void onGlobalShortcutActivated(const QString& id);
-    void onTrayIconActivated(QSystemTrayIcon::ActivationReason reason);
+    // 托盘与快捷键动作
+    void onActionScreenshot();
+    void onActionTextRecognize();
+    void onActionFormulaRecognize();
+    void onActionTableRecognize();
+    void onActionShowWindow();
 
-    void onTrayTextRecognize();
-    void onTrayFormulaRecognize();
-    void onTrayTableRecognize();
-
-    void onQuickTextRecognize();
-    void onQuickFormulaRecognize();
-    void onQuickTableRecognize();
+    // 设置变更响应
+    void onShortcutSettingChanged();
 
 private:
     void setupUi();
+    void setupConnections();
     void setupMenuBar();
-    void performRecognition(const QString& prompt);
-    void setupGlobalShortcuts();
-    void createTrayIcon();
-    void setShortcutForKey(const QString& key, QString& currentKey);
+    void initManagers(); // 初始化各个管理器
+    void applyGlobalShortcuts(); // 应用全局快捷键（读取设置）
 
+    // UI 组件
     ImageViewWidget* m_imageView;
     MarkdownRenderer* m_markdownRenderer;
     MarkdownSourceEditor* m_markdownSource;
     PromptBar* m_promptBar;
-    NetworkManager* m_networkManager;
     QShortcut* m_pasteShortcut;
 
-    QString m_lastUsedPrompt;
-    bool m_autoUseLastPrompt;
-    QTimer* m_autoRecognizeDebounceTimer;
+    // 管理器
+    ScreenshotManager* m_screenshotManager = nullptr;
+    SettingsManager* m_settings = nullptr;
+    TrayManager* m_trayManager = nullptr;
+    RecognitionManager* m_recognitionManager = nullptr;
 
-    QShortcut* m_screenshotShortcut;
-    QShortcut* m_textShortcut;
-    QShortcut* m_formulaShortcut;
-    QShortcut* m_tableShortcut;
-
-    QString m_screenshotShortcutKey;
-    QString m_textRecognizeShortcutKey;
-    QString m_formulaRecognizeShortcutKey;
-    QString m_tableRecognizeShortcutKey;
-
-    ScreenshotManager* m_screenshotManager;
-    QSystemTrayIcon* m_trayIcon;
-
-    QString m_tempPromptOverride;
+    // 本地快捷键对象（用于 X11 或内部快捷键）
+    QShortcut* m_shortcutScreenshot = nullptr;
+    QShortcut* m_shortcutText = nullptr;
+    QShortcut* m_shortcutFormula = nullptr;
+    QShortcut* m_shortcutTable = nullptr;
 };
 
 #endif // MAINWINDOW_H
