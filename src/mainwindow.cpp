@@ -143,7 +143,15 @@ void MainWindow::setPrompt(const QString& prompt) {
 }
 
 void MainWindow::startAreaSelection(const QImage& fullImage) {
-    ScreenshotAreaSelector selector(fullImage, nullptr);
+    // 获取当前鼠标所在的屏幕，或者主屏幕
+    QScreen *screen = QGuiApplication::screenAt(QCursor::pos());
+    if (!screen) {
+        screen = QGuiApplication::primaryScreen();
+    }
+
+    // 传入 screen 指针
+    ScreenshotAreaSelector selector(fullImage, screen, nullptr);
+
     if (selector.exec() == QDialog::Accepted) {
         QRect rect = selector.selectedRect();
         if (!rect.isNull() && rect.isValid()) {
