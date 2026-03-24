@@ -71,3 +71,14 @@ void SettingsManager::setAutoUseLastPrompt(bool enabled) {
         emit autoUseLastPromptChanged(enabled);
     }
 }
+
+QString SettingsManager::displayMathEnvironment() const {
+    return m_settings.value("display_math_env", Constants::DEFAULT_DISPLAY_MATH_ENV).toString();
+}
+
+void SettingsManager::setDisplayMathEnvironment(const QString& env) {
+    if (displayMathEnvironment() != env) {
+        m_settings.setValue("display_math_env", env);
+        emit displayMathEnvironmentChanged(env);
+    }
+}

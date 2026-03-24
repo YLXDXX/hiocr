@@ -34,6 +34,7 @@ set(APP_SOURCES
     appcontroller.cpp
     shortcuthandler.cpp
     settingsdialog.cpp
+    markdowncopybar.cpp
 )
 
 set(APP_HEADERS
@@ -50,6 +51,7 @@ set(APP_HEADERS
     recognitionmanager.h
     settingsdialog.h
     constants.h
+    markdowncopybar.h
 )
 
 # 如果 KF6GlobalAccel 可用，则添加 KGlobalAccel 支持

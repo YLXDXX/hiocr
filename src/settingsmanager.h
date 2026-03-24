@@ -30,10 +30,14 @@ public:
     bool autoUseLastPrompt() const;
     void setAutoUseLastPrompt(bool enabled);
 
+    QString displayMathEnvironment() const;
+    void setDisplayMathEnvironment(const QString& env);
+
 signals:
     void serverUrlChanged(const QString& url);
     void shortcutsChanged();
     void autoUseLastPromptChanged(bool enabled);
+    void displayMathEnvironmentChanged(const QString& env);
 
 private:
     explicit SettingsManager(QObject* parent = nullptr);

@@ -17,6 +17,10 @@ namespace Constants {
     const QString SHORTCUT_TEXT = "Ctrl+Shift+T";
     const QString SHORTCUT_FORMULA = "Ctrl+Shift+F";
     const QString SHORTCUT_TABLE = "Ctrl+Shift+B";
+
+    // 【新增】默认行间公式环境
+    // 可选值: "$$", "equation", "align" 等
+    const QString DEFAULT_DISPLAY_MATH_ENV = "$$";
 }
 
 #endif // CONSTANTS_H

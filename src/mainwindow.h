@@ -8,6 +8,7 @@ class MarkdownRenderer;
 class MarkdownSourceEditor;
 class PromptBar;
 class QShortcut;
+class MarkdownCopyBar;
 
 class MainWindow : public QMainWindow
 {
@@ -54,6 +55,7 @@ private:
     MarkdownSourceEditor* m_markdownSource;
     PromptBar* m_promptBar;
     QShortcut* m_pasteShortcut;
+    MarkdownCopyBar* m_copyBar;
 };
 
 #endif // MAINWINDOW_H

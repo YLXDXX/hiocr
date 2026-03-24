@@ -6,6 +6,7 @@
 #include "imageprocessor.h"
 #include "screenshotareaselector.h"
 #include "settingsmanager.h" // 引入设置管理器
+#include "markdowncopybar.h" // 引入新组件
 
 #include <QSplitter>
 #include <QVBoxLayout>
@@ -51,15 +52,31 @@ void MainWindow::setupUi()
     leftSplitter->addWidget(m_markdownRenderer);
     leftSplitter->setSizes({400, 400});
 
-    // 右侧
+    // 右侧布局调整
     QSplitter* rightSplitter = new QSplitter(Qt::Vertical);
     mainSplitter->addWidget(rightSplitter);
 
     m_promptBar = new PromptBar(this);
     rightSplitter->addWidget(m_promptBar);
 
+    // 创建 Markdown 容器
+    QWidget* markdownContainer = new QWidget(this);
+    QVBoxLayout* mdLayout = new QVBoxLayout(markdownContainer);
+    mdLayout->setContentsMargins(0, 0, 0, 0);
+    mdLayout->setSpacing(2);
+
     m_markdownSource = new MarkdownSourceEditor(this);
-    rightSplitter->addWidget(m_markdownSource);
+
+    // 创建复制栏
+    m_copyBar = new MarkdownCopyBar(this);
+
+    // 【关键修改】将编辑器指针传递给复制栏
+    m_copyBar->setSourceEditor(m_markdownSource);
+
+    mdLayout->addWidget(m_markdownSource);
+    mdLayout->addWidget(m_copyBar);
+
+    rightSplitter->addWidget(markdownContainer);
     rightSplitter->setStretchFactor(1, 1);
 
     mainSplitter->setSizes({700, 500});

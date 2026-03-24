@@ -46,6 +46,16 @@ void SettingsDialog::setupUi()
     behaviorLayout->addWidget(m_autoUseLastPromptCheck);
     mainLayout->addWidget(behaviorGroup);
 
+    // --- 显示设置 ---
+    QGroupBox* displayGroup = new QGroupBox("显示设置");
+    QFormLayout* displayLayout = new QFormLayout(displayGroup);
+    m_displayMathCombo = new QComboBox();
+    m_displayMathCombo->addItem("$$ ... $$", "$$");
+    m_displayMathCombo->addItem("\\begin{equation} ... \\end{equation}", "equation");
+    m_displayMathCombo->addItem("\\begin{align} ... \\end{align}", "align");
+    displayLayout->addRow("行间公式环境:", m_displayMathCombo);
+    mainLayout->addWidget(displayGroup);
+
     // --- 按钮 ---
     QDialogButtonBox* buttonBox = new QDialogButtonBox(QDialogButtonBox::Save | QDialogButtonBox::RestoreDefaults);
 
@@ -70,6 +80,9 @@ void SettingsDialog::loadSettings()
     m_scFormulaEdit->setText(s->formulaRecognizeShortcut());
     m_scTableEdit->setText(s->tableRecognizeShortcut());
     m_autoUseLastPromptCheck->setChecked(s->autoUseLastPrompt());
+
+    int index = m_displayMathCombo->findData(s->displayMathEnvironment());
+    if (index != -1) m_displayMathCombo->setCurrentIndex(index);
 }
 
 void SettingsDialog::onSaveClicked()
@@ -81,6 +94,7 @@ void SettingsDialog::onSaveClicked()
     s->setFormulaRecognizeShortcut(m_scFormulaEdit->text());
     s->setTableRecognizeShortcut(m_scTableEdit->text());
     s->setAutoUseLastPrompt(m_autoUseLastPromptCheck->isChecked());
+    s->setDisplayMathEnvironment(m_displayMathCombo->currentData().toString());
     accept();
 }
 

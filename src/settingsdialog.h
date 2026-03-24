@@ -5,6 +5,7 @@
 #include <QLineEdit>
 #include <QCheckBox>
 #include <QPushButton>
+#include <QComboBox> // 新增：引入 QComboBox 头文件
 
 class SettingsDialog : public QDialog
 {
@@ -29,7 +30,12 @@ private:
     QLineEdit* m_scFormulaEdit;
     QLineEdit* m_scTableEdit;
 
+    // 行为设置
     QCheckBox* m_autoUseLastPromptCheck;
+
+    // 【新增】显示设置：行间公式环境选择
+    QComboBox* m_displayMathCombo;
+
     QPushButton* m_saveBtn;
     QPushButton* m_defaultBtn;
 };
