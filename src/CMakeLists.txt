@@ -31,6 +31,8 @@ set(APP_SOURCES
     globalshortcutmanager.cpp
     traymanager.cpp          # 移动到这里 (依赖 QSystemTrayIcon -> Widgets)
     recognitionmanager.cpp   # 移动到这里 (虽然不直接依赖 Widgets，但通常作为 App 层逻辑)
+    appcontroller.cpp       # 新增
+    shortcuthandler.cpp     # 新增
 )
 
 set(APP_HEADERS

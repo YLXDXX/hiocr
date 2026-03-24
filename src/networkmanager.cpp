@@ -1,4 +1,5 @@
 #include "networkmanager.h"
+#include "settingsmanager.h"
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
@@ -9,10 +10,16 @@
 
 NetworkManager::NetworkManager(QObject* parent) : QObject(parent) {
     m_manager = new QNetworkAccessManager(this);
+    // 【修改】不再直接使用 QSettings，而是从 SettingsManager 获取
+    // 但为了保持灵活性，sendRequest 时获取或在构造时更新皆可。
+    // 这里我们移除构造函数中的读取逻辑，改为在发送时获取或提供 setter。
+    // 或者保持简单，构造时读一次：
+    m_serverUrl = SettingsManager::instance()->serverUrl();
 
-    // 从设置中读取服务器 URL，如果不存在则使用默认值
-    QSettings settings;
-    m_serverUrl = settings.value("server/url", "http://localhost:8080/v1/chat/completions").toString();
+    // 监听设置变化（可选，如果 NetworkManager 长期存活）
+    connect(SettingsManager::instance(), &SettingsManager::serverUrlChanged, this, [this](const QString& url){
+        m_serverUrl = url;
+    });
 }
 
 

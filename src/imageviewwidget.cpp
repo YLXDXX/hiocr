@@ -42,15 +42,18 @@ void ImageViewWidget::setupUi()
     m_view->setDragMode(QGraphicsView::ScrollHandDrag);
     m_view->setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
     m_view->setBackgroundBrush(QColor("#f0f0f0"));
+
+    // 【修改】优化样式表，增加 QGraphicsView 前缀，并简化代码
     m_view->setStyleSheet(
-        "border: 1px solid gray; background-color: #f0f0f0;"
+        "QGraphicsView { border: 1px solid gray; background-color: #f0f0f0; }"
         "QScrollBar:vertical { width: 8px; background: #f0f0f0; margin: 0px; }"
-        "QScrollBar:horizontal { height: 8px; background: #f0f0f0; margin: 0px; }"
         "QScrollBar::handle:vertical { background: #c0c0c0; border-radius: 4px; min-height: 20px; }"
+        "QScrollBar:horizontal { height: 8px; background: #f0f0f0; margin: 0px; }"
         "QScrollBar::handle:horizontal { background: #c0c0c0; border-radius: 4px; min-width: 20px; }"
         "QScrollBar::add-line, QScrollBar::sub-line { border: none; background: none; }"
         "QScrollBar::add-page, QScrollBar::sub-page { background: none; }"
     );
+
     m_view->setFocusPolicy(Qt::StrongFocus);
     layout->addWidget(m_view);
 

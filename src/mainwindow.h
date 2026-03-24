@@ -2,56 +2,52 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include <QShortcut>
 
 class ImageViewWidget;
 class MarkdownRenderer;
 class MarkdownSourceEditor;
 class PromptBar;
-class ScreenshotManager;
-class SettingsManager;
-class TrayManager;
-class RecognitionManager;
+class QShortcut;
 
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
 
 public:
-    explicit MainWindow(QWidget* parent = nullptr);
+    explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
-    void loadImageFromFile(const QString& path);
+
+    // UI 公共接口
+    void setImage(const QImage& image);
+    void setRecognitionResult(const QString& markdown);
+    void showError(const QString& message);
+    void setBusy(bool busy);
+    void setPrompt(const QString& prompt); // 【新增】设置提示词
+    void startAreaSelection(const QImage& fullImage);
+
+signals:
+    // 用户意图信号
+    void recognizeRequested(const QString& prompt, const QString& base64Image);
+    void imagePasted(const QImage& image);
+    void areaSelected(const QRect& rect);
+    void settingsTriggered();
+    void screenshotRequested(); // 【新增】菜单栏截图请求
 
 protected:
     void closeEvent(QCloseEvent *event) override;
-    void keyPressEvent(QKeyEvent *event) override;
 
 private slots:
-    // UI 响应槽
     void onPasteImage();
     void onMarkdownSourceChanged();
 
-    // 业务逻辑槽（由 Manager 触发）
-    void onRecognitionFinished(const QString& result);
-    void onRecognitionFailed(const QString& error);
-    void onBusyChanged(bool busy);
-
-    // 托盘与快捷键动作
-    void onActionScreenshot();
-    void onActionTextRecognize();
-    void onActionFormulaRecognize();
-    void onActionTableRecognize();
-    void onActionShowWindow();
-
-    // 设置变更响应
-    void onShortcutSettingChanged();
+    // 【新增】处理 PromptBar 的信号
+    void onPromptBarRecognize();
+    void onPromptBarAutoRecognize(const QString& prompt);
 
 private:
     void setupUi();
     void setupConnections();
-    void setupMenuBar();
-    void initManagers(); // 初始化各个管理器
-    void applyGlobalShortcuts(); // 应用全局快捷键（读取设置）
+    void setupMenuBar(); // 【新增】独立出菜单构建函数
 
     // UI 组件
     ImageViewWidget* m_imageView;
@@ -59,18 +55,6 @@ private:
     MarkdownSourceEditor* m_markdownSource;
     PromptBar* m_promptBar;
     QShortcut* m_pasteShortcut;
-
-    // 管理器
-    ScreenshotManager* m_screenshotManager = nullptr;
-    SettingsManager* m_settings = nullptr;
-    TrayManager* m_trayManager = nullptr;
-    RecognitionManager* m_recognitionManager = nullptr;
-
-    // 本地快捷键对象（用于 X11 或内部快捷键）
-    QShortcut* m_shortcutScreenshot = nullptr;
-    QShortcut* m_shortcutText = nullptr;
-    QShortcut* m_shortcutFormula = nullptr;
-    QShortcut* m_shortcutTable = nullptr;
 };
 
 #endif // MAINWINDOW_H

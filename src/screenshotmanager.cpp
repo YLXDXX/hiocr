@@ -1,5 +1,4 @@
 #include "screenshotmanager.h"
-#include "screenshotareaselector.h"
 
 #include <QDBusInterface>
 #include <QDBusPendingCall>
@@ -10,6 +9,7 @@
 #include <QUrl>
 #include <QFile>
 #include <QDebug>
+#include <QPixmap>
 
 ScreenshotManager::ScreenshotManager(QObject* parent)
     : QObject(parent)
@@ -69,14 +69,12 @@ void ScreenshotManager::requestViaPortal()
 void ScreenshotManager::onPortalResponse(uint response, const QVariantMap& results)
 {
     if (response != 0) {
-        qDebug() << "Screenshot cancelled or failed (response code:" << response << ")";
         emit screenshotFailed("截图取消或失败");
         return;
     }
 
     QString uri = results["uri"].toString();
     if (uri.isEmpty()) {
-        qWarning() << "Screenshot response missing uri";
         emit screenshotFailed("未获取到截图 URI");
         return;
     }
@@ -84,52 +82,27 @@ void ScreenshotManager::onPortalResponse(uint response, const QVariantMap& resul
     QUrl url(uri);
     QString localPath = url.toLocalFile();
     QImage fullScreenshot(localPath);
-    if (fullScreenshot.isNull()) {
-        qWarning() << "Failed to load screenshot image from:" << localPath;
-        emit screenshotFailed("无法加载截图图像");
-        return;
-    }
 
     // 删除临时文件
     QFile::remove(localPath);
 
-    // 弹出区域选择对话框
-    ScreenshotAreaSelector selector(fullScreenshot, nullptr);
-    if (selector.exec() == QDialog::Accepted) {
-        QRect rect = selector.selectedRect();
-        if (!rect.isNull() && rect.isValid()) {
-            QImage cropped = fullScreenshot.copy(rect);
-            emit screenshotCaptured(cropped);
-        } else {
-            emit screenshotFailed("选区无效");
-        }
-    } else {
-        // 用户取消
-        emit screenshotFailed("截图已取消");
+    if (fullScreenshot.isNull()) {
+        emit screenshotFailed("无法加载截图图像");
+        return;
     }
+
+    // 【修改】直接发出全屏截图信号，不再在此处弹出选区对话框
+    emit screenshotCaptured(fullScreenshot);
 }
 
 void ScreenshotManager::fallbackScreenshot()
 {
-    // 传统方式（仅 X11 有效）
     QScreen* screen = QGuiApplication::primaryScreen();
     if (screen) {
         QPixmap pixmap = screen->grabWindow(0);
         if (!pixmap.isNull()) {
-            // 同样弹出区域选择对话框
-            QImage fullScreenshot = pixmap.toImage();
-            ScreenshotAreaSelector selector(fullScreenshot, nullptr);
-            if (selector.exec() == QDialog::Accepted) {
-                QRect rect = selector.selectedRect();
-                if (!rect.isNull() && rect.isValid()) {
-                    QImage cropped = fullScreenshot.copy(rect);
-                    emit screenshotCaptured(cropped);
-                } else {
-                    emit screenshotFailed("选区无效");
-                }
-            } else {
-                emit screenshotFailed("截图已取消");
-            }
+            // 【修改】直接发出全屏截图信号
+            emit screenshotCaptured(pixmap.toImage());
         } else {
             emit screenshotFailed("无法获取屏幕截图");
         }
