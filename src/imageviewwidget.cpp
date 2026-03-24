@@ -184,24 +184,37 @@ void ImageViewWidget::updateView()
 
     switch (m_currentMode) {
         case FitToView: {
-            // 保持纵横比，取较小的缩放比
             qreal scale = qMin(scaleX, scaleY);
             m_view->scale(scale, scale);
             break;
         }
         case FitToWidth: {
-            // 宽度填满
             m_view->scale(scaleX, scaleX);
             break;
         }
         case FitToHeight: {
-            // 高度填满
             m_view->scale(scaleY, scaleY);
             break;
         }
         case OriginalSize: {
-            // 比例 1:1，不进行任何缩放变换
-            // 这样显示的是真实的物理像素，最清晰
+            // 【修复】适配高 DPI 屏幕
+            // 目标：让图片的一个像素对应屏幕的一个物理像素
+            // 原理：
+            // 1. QPixmap 的尺寸是逻辑尺寸，如果图片 DPR = 1.0，则其逻辑尺寸 = 物理尺寸。
+            // 2. 屏幕有一个 DPR (例如 1.5)。
+            // 3. 如果不缩放，Qt 会把图片的逻辑像素当作屏幕的逻辑像素绘制，
+            //    导致物理尺寸变大 (乘以了屏幕 DPR)。
+            // 4. 我们需要对视图进行缩小，缩放比例 = 图片DPR / 屏幕DPR。
+            //    这样显示出来的逻辑尺寸变小了，但对应的物理像素数正好等于图片原始像素数。
+
+            qreal screenDpr = m_view->devicePixelRatioF(); // 获取屏幕 DPR (如 1.5)
+            qreal imageDpr = m_originalPixmap.devicePixelRatio(); // 获取图片 DPR (通常为 1.0)
+
+            qreal factor = imageDpr / screenDpr;
+
+            if (!qFuzzyCompare(factor, 1.0)) {
+                m_view->scale(factor, factor);
+            }
             break;
         }
     }
