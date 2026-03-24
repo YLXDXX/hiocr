@@ -1,22 +1,20 @@
 #include "networkmanager.h"
-#include "settingsmanager.h"
+#include "settingsmanager.h" // 引入 SettingsManager
+
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QUrl>
 #include <QHttpMultiPart>
 #include <QDebug>
-#include <QSettings>
 
 NetworkManager::NetworkManager(QObject* parent) : QObject(parent) {
     m_manager = new QNetworkAccessManager(this);
-    // 【修改】不再直接使用 QSettings，而是从 SettingsManager 获取
-    // 但为了保持灵活性，sendRequest 时获取或在构造时更新皆可。
-    // 这里我们移除构造函数中的读取逻辑，改为在发送时获取或提供 setter。
-    // 或者保持简单，构造时读一次：
+
+    // 【优化完成】不再使用 QSettings，而是从 SettingsManager 获取
     m_serverUrl = SettingsManager::instance()->serverUrl();
 
-    // 监听设置变化（可选，如果 NetworkManager 长期存活）
+    // 【优化完成】连接设置变化信号，动态更新 URL
     connect(SettingsManager::instance(), &SettingsManager::serverUrlChanged, this, [this](const QString& url){
         m_serverUrl = url;
     });
@@ -26,8 +24,9 @@ NetworkManager::NetworkManager(QObject* parent) : QObject(parent) {
 void NetworkManager::setServerUrl(const QString& url) {
     if (m_serverUrl == url) return;
     m_serverUrl = url;
-    QSettings settings;
-    settings.setValue("server/url", url);
+    // 注意：这里不需要再设置 QSettings，因为设置来源已经是 SettingsManager 了
+    // 这个 setServerUrl 现在可能变得多余，通常应该由 SettingsManager 驱动
+    // 但如果需要保留作为本地缓存，也可以保留
 }
 
 void NetworkManager::sendRequest(const QString& base64Image,
@@ -42,20 +41,16 @@ void NetworkManager::sendRequest(const QString& base64Image,
     // 确定实际使用的 URL：优先使用传入的参数，否则使用成员变量 m_serverUrl
     QString url = serverUrl.isEmpty() ? m_serverUrl : serverUrl;
 
-    // 构建 messages 数组
+    // ... 后续代码保持不变 ...
     QJsonArray messages;
     QJsonObject userMessage;
-
-    // 消息内容是一个数组，包含文本部分和图片部分
     QJsonArray content;
 
-    // 1. 文本部分
     QJsonObject textPart;
     textPart["type"] = "text";
     textPart["text"] = prompt;
     content.append(textPart);
 
-    // 2. 图片部分（以 data URL 形式嵌入）
     QJsonObject imagePart;
     imagePart["type"] = "image_url";
     QJsonObject imageUrlObj;
@@ -63,12 +58,10 @@ void NetworkManager::sendRequest(const QString& base64Image,
     imagePart["image_url"] = imageUrlObj;
     content.append(imagePart);
 
-    // 组装用户消息
     userMessage["role"] = "user";
     userMessage["content"] = content;
     messages.append(userMessage);
 
-    // 构建主请求体
     QJsonObject json;
     json["messages"] = messages;
     json["stream"] = false;

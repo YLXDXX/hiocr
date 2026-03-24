@@ -23,7 +23,7 @@ void ShortcutHandler::applyShortcuts()
 
 void ShortcutHandler::setupLocalShortcuts()
 {
-    // 清理旧的
+    // 【优化完成】清理旧的快捷键对象，使用 deleteLater() 更安全
     if (m_scScreenshot) { m_scScreenshot->deleteLater(); m_scScreenshot = nullptr; }
     if (m_scText) { m_scText->deleteLater(); m_scText = nullptr; }
     if (m_scFormula) { m_scFormula->deleteLater(); m_scFormula = nullptr; }
