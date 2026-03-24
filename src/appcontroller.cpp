@@ -75,7 +75,7 @@ void AppController::setupConnections()
 
     // --- MainWindow UI -> Controller ---
 
-    // 【修复问题3】连接识别请求
+    // 连接识别请求
     connect(m_mainWindow, &MainWindow::recognizeRequested, this, [this](const QString& prompt, const QString& base64Img){
         m_recognitionManager->recognize(prompt, base64Img);
     });
@@ -86,7 +86,7 @@ void AppController::setupConnections()
     });
     connect(m_mainWindow, &MainWindow::areaSelected, this, &AppController::onAreaSelected);
 
-    // 【修复问题2】连接菜单栏的截图请求
+    // 连接菜单栏的截图请求
     connect(m_mainWindow, &MainWindow::screenshotRequested, this, &AppController::takeScreenshot);
 
     // --- ScreenshotManager -> Controller ---
@@ -94,7 +94,8 @@ void AppController::setupConnections()
     connect(m_screenshotManager, &ScreenshotManager::screenshotFailed, this, &AppController::onScreenshotFailed);
 
     // --- RecognitionManager -> Controller ---
-    connect(m_recognitionManager, &RecognitionManager::recognitionFinished, this, &AppController::recognitionResultReady);
+    // 【修改】连接到新的槽函数 onRecognitionFinished，以便处理自动复制逻辑
+    connect(m_recognitionManager, &RecognitionManager::recognitionFinished, this, &AppController::onRecognitionFinished);
     connect(m_recognitionManager, &RecognitionManager::recognitionFailed, this, &AppController::recognitionFailed);
     connect(m_recognitionManager, &RecognitionManager::busyStateChanged, this, &AppController::busyStateChanged);
 
@@ -113,7 +114,7 @@ void AppController::setupConnections()
         qDebug() << "Settings menu interaction";
     });
 
-    // 【新增】连接设置窗口请求
+    // 连接设置窗口请求
     connect(m_mainWindow, &MainWindow::settingsTriggered, this, [this](){
         SettingsDialog dialog(m_mainWindow);
         dialog.exec(); // 模态运行
@@ -184,14 +185,23 @@ void AppController::onAreaSelected(const QRect& rect) {
     QImage cropped = m_pendingFullScreenshot.copy(rect);
     m_pendingFullScreenshot = QImage();
 
+    // 显示图片
     emit imageChanged(cropped);
 
-    QString base64 = ImageProcessor::imageToBase64(cropped);
-    if (!m_pendingPromptOverride.isEmpty()) {
-        m_recognitionManager->setTempPromptOverride(m_pendingPromptOverride);
-        m_pendingPromptOverride.clear();
+    // 【修改】检查设置：是否自动识别
+    if (m_settings->autoRecognizeOnScreenshot()) {
+        QString base64 = ImageProcessor::imageToBase64(cropped);
+        if (!m_pendingPromptOverride.isEmpty()) {
+            m_recognitionManager->setTempPromptOverride(m_pendingPromptOverride);
+            m_pendingPromptOverride.clear();
+        }
+        // 触发识别流程
+        m_recognitionManager->onImageChanged(base64);
+    } else {
+        // 如果不自动识别，只显示窗口，不发起网络请求
+        // 清空上一次的结果，避免混淆
+        emit recognitionResultReady(QString());
     }
-    m_recognitionManager->onImageChanged(base64);
 
     QTimer::singleShot(0, this, [this](){
         showWindow();
@@ -212,4 +222,21 @@ void AppController::applySettings()
         m_recognitionManager->setAutoUseLastPrompt(m_settings->autoUseLastPrompt());
     }
     // 快捷键在 ShortcutHandler 构造时已自动应用，这里无需重复调用
+}
+
+void AppController::onRecognitionFinished(const QString& markdown)
+{
+    // 1. 更新 UI
+    emit recognitionResultReady(markdown);
+
+    // 2. 【新增】处理自动复制
+    if (m_settings->autoCopyResult()) {
+        if (!markdown.isEmpty()) {
+            QApplication::clipboard()->setText(markdown);
+            // 可选：在托盘或状态栏提示已复制
+            if (m_trayManager) {
+                m_trayManager->showMessage("识别完成", "结果已自动复制到剪贴板");
+            }
+        }
+    }
 }

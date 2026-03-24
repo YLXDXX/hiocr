@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QProcess>
 
 class ImageViewWidget;
 class MarkdownRenderer;
@@ -43,6 +44,9 @@ private slots:
     void onMarkdownSourceChanged();
     void onPromptBarRecognize();
     void onPromptBarAutoRecognize(const QString& prompt);
+
+    void onExternalProcessTriggered(); // 新增槽函数
+    void onExternalProcessFinished(int exitCode, QProcess::ExitStatus exitStatus); // 新增
 
 private:
     void setupUi();

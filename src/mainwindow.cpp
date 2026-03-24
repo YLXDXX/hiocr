@@ -23,6 +23,9 @@
 #include <QInputDialog>
 #include <QLineEdit>
 #include <QKeyEvent>
+#include <QStatusBar>
+#include <QProcess>
+
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
 {
@@ -113,6 +116,11 @@ void MainWindow::setupMenuBar()
         });
         fileMenu->addSeparator();
         fileMenu->addAction("退出", qApp, &QApplication::quit);
+
+        // --- 工具菜单 ---
+        QMenu* toolsMenu = menuBar->addMenu("工具");
+        QAction* extAct = toolsMenu->addAction("外部程序处理并复制", this, &MainWindow::onExternalProcessTriggered);
+        extAct->setShortcut(QKeySequence("Ctrl+Shift+E")); // 可选快捷键
 
         // --- 设置菜单 ---
         QMenu* settingsMenu = menuBar->addMenu("设置");
@@ -231,4 +239,66 @@ void MainWindow::onPromptBarRecognize() {
 void MainWindow::onPromptBarAutoRecognize(const QString& prompt) {
     // 自动识别时，PromptBar 已经更新了内部的 prompt，直接读取即可
     emit recognizeRequested(prompt, m_imageView->currentBase64());
+}
+
+
+void MainWindow::onExternalProcessTriggered()
+{
+    QString command = SettingsManager::instance()->externalProcessorCommand();
+    if (command.isEmpty()) {
+        QMessageBox::warning(this, "提示", "未配置外部处理程序。\n请在 设置 -> 外部处理程序 中配置命令。");
+        return;
+    }
+
+    QString currentText = m_markdownSource->toPlainText();
+    if (currentText.isEmpty()) {
+        QMessageBox::information(this, "提示", "内容为空，无需处理。");
+        return;
+    }
+
+    // 创建进程
+    QProcess* process = new QProcess(this);
+
+    // 连接结束信号
+    connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+            this, &MainWindow::onExternalProcessFinished);
+
+    // 启动命令 (Qt6 推荐使用 startCommand，它会自动处理参数分割)
+    // 如果使用 Qt5，请使用 process->start(command, QProcess::Unbuffered);
+    process->startCommand(command);
+
+    // 写入输入
+    process->write(currentText.toUtf8());
+    process->closeWriteChannel(); // 发送 EOF，通知外部程序输入结束
+
+    // 为了更好的用户体验，可以在这里显示一个等待状态，但简单起见我们先同步处理
+    // 注意：process->waitForFinished() 会阻塞 UI，如果外部程序运行时间长，
+    // 建议在 onExternalProcessFinished 中处理结果。
+    // 这里我们使用异步方式，不阻塞 UI。
+}
+
+void MainWindow::onExternalProcessFinished(int exitCode, QProcess::ExitStatus exitStatus)
+{
+    QProcess* process = qobject_cast<QProcess*>(sender());
+    if (!process) return;
+
+    if (exitStatus != QProcess::NormalExit || exitCode != 0) {
+        QString error = process->readAllStandardError();
+        if (error.isEmpty()) error = "进程异常退出或返回非零代码。";
+        QMessageBox::critical(this, "处理失败", error);
+    } else {
+        // 读取标准输出
+        QString result = QString::fromUtf8(process->readAllStandardOutput());
+
+        if (result.isEmpty()) {
+            QMessageBox::warning(this, "提示", "外部程序未返回任何内容。");
+        } else {
+            // 【关键】将结果复制到剪贴板，不修改源码编辑器
+            QApplication::clipboard()->setText(result);
+            // 可选：显示提示
+            statusBar()->showMessage("已通过外部程序处理并复制到剪贴板", 3000);
+        }
+    }
+
+    process->deleteLater(); // 清理进程对象
 }

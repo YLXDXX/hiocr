@@ -1,10 +1,13 @@
 #include "settingsdialog.h"
 #include "settingsmanager.h"
-#include "constants.h" // 引入常量
+#include "constants.h"
+
 #include <QVBoxLayout>
 #include <QFormLayout>
 #include <QGroupBox>
 #include <QDialogButtonBox>
+#include <QLabel>      // 【关键】必须包含此头文件
+#include <QComboBox>   // 用于下拉框
 
 SettingsDialog::SettingsDialog(QWidget *parent) : QDialog(parent)
 {
@@ -15,7 +18,7 @@ SettingsDialog::SettingsDialog(QWidget *parent) : QDialog(parent)
 void SettingsDialog::setupUi()
 {
     setWindowTitle("设置");
-    resize(400, 300);
+    resize(450, 400); // 稍微增加高度以容纳新内容
 
     QVBoxLayout* mainLayout = new QVBoxLayout(this);
 
@@ -39,13 +42,6 @@ void SettingsDialog::setupUi()
     shortcutLayout->addRow("表格识别:", m_scTableEdit);
     mainLayout->addWidget(shortcutGroup);
 
-    // --- 行为设置 ---
-    QGroupBox* behaviorGroup = new QGroupBox("行为设置");
-    QVBoxLayout* behaviorLayout = new QVBoxLayout(behaviorGroup);
-    m_autoUseLastPromptCheck = new QCheckBox("自动使用上次识别类型");
-    behaviorLayout->addWidget(m_autoUseLastPromptCheck);
-    mainLayout->addWidget(behaviorGroup);
-
     // --- 显示设置 ---
     QGroupBox* displayGroup = new QGroupBox("显示设置");
     QFormLayout* displayLayout = new QFormLayout(displayGroup);
@@ -56,13 +52,41 @@ void SettingsDialog::setupUi()
     displayLayout->addRow("行间公式环境:", m_displayMathCombo);
     mainLayout->addWidget(displayGroup);
 
+    // --- 行为设置 ---
+    QGroupBox* behaviorGroup = new QGroupBox("行为设置");
+    QVBoxLayout* behaviorLayout = new QVBoxLayout(behaviorGroup);
+
+    m_autoUseLastPromptCheck = new QCheckBox("自动使用上次识别类型");
+    behaviorLayout->addWidget(m_autoUseLastPromptCheck);
+
+    // 【新增】
+    m_autoRecognizeCheck = new QCheckBox("截图后自动识别");
+    behaviorLayout->addWidget(m_autoRecognizeCheck);
+
+    m_autoCopyCheck = new QCheckBox("识别完成后自动复制结果");
+    behaviorLayout->addWidget(m_autoCopyCheck);
+
+    mainLayout->addWidget(behaviorGroup);
+
+    // --- 外部程序设置 ---
+    QGroupBox* externalGroup = new QGroupBox("外部处理程序");
+    QVBoxLayout* externalLayout = new QVBoxLayout(externalGroup);
+
+    QLabel* extHint = new QLabel("命令接收 Markdown 文本作为标准输入，\n并将处理后的文本输出到标准输出。");
+    extHint->setStyleSheet("color: gray; font-size: 11px;");
+    externalLayout->addWidget(extHint);
+
+    m_externalProcessorEdit = new QLineEdit();
+    m_externalProcessorEdit->setPlaceholderText("例如: python3 /path/to/script.py");
+    externalLayout->addWidget(m_externalProcessorEdit);
+
+    mainLayout->addWidget(externalGroup);
+
     // --- 按钮 ---
     QDialogButtonBox* buttonBox = new QDialogButtonBox(QDialogButtonBox::Save | QDialogButtonBox::RestoreDefaults);
 
-    // 连接保存按钮
     connect(buttonBox, &QDialogButtonBox::accepted, this, &SettingsDialog::onSaveClicked);
 
-    // 【修复】正确连接恢复默认按钮
     QPushButton* restoreBtn = buttonBox->button(QDialogButtonBox::RestoreDefaults);
     if (restoreBtn) {
         connect(restoreBtn, &QPushButton::clicked, this, &SettingsDialog::onRestoreDefaults);
@@ -81,8 +105,15 @@ void SettingsDialog::loadSettings()
     m_scTableEdit->setText(s->tableRecognizeShortcut());
     m_autoUseLastPromptCheck->setChecked(s->autoUseLastPrompt());
 
+    // 加载行间公式环境设置
     int index = m_displayMathCombo->findData(s->displayMathEnvironment());
     if (index != -1) m_displayMathCombo->setCurrentIndex(index);
+
+    // 加载外部程序设置
+    m_externalProcessorEdit->setText(s->externalProcessorCommand());
+
+    m_autoRecognizeCheck->setChecked(s->autoRecognizeOnScreenshot());
+    m_autoCopyCheck->setChecked(s->autoCopyResult());
 }
 
 void SettingsDialog::onSaveClicked()
@@ -94,17 +125,35 @@ void SettingsDialog::onSaveClicked()
     s->setFormulaRecognizeShortcut(m_scFormulaEdit->text());
     s->setTableRecognizeShortcut(m_scTableEdit->text());
     s->setAutoUseLastPrompt(m_autoUseLastPromptCheck->isChecked());
+
+    // 保存行间公式环境
     s->setDisplayMathEnvironment(m_displayMathCombo->currentData().toString());
+
+    // 保存外部程序设置
+    s->setExternalProcessorCommand(m_externalProcessorEdit->text());
+
+    s->setAutoRecognizeOnScreenshot(m_autoRecognizeCheck->isChecked());
+    s->setAutoCopyResult(m_autoCopyCheck->isChecked());
+
     accept();
 }
 
 void SettingsDialog::onRestoreDefaults()
 {
-    // 【修复】使用 Constants 命名空间填充默认值
     m_serverUrlEdit->setText(Constants::DEFAULT_SERVER_URL);
     m_scScreenshotEdit->setText(Constants::SHORTCUT_SCREENSHOT);
     m_scTextEdit->setText(Constants::SHORTCUT_TEXT);
     m_scFormulaEdit->setText(Constants::SHORTCUT_FORMULA);
     m_scTableEdit->setText(Constants::SHORTCUT_TABLE);
     m_autoUseLastPromptCheck->setChecked(true);
+
+    m_autoRecognizeCheck->setChecked(Constants::DEFAULT_AUTO_RECOGNIZE_SCREENSHOT);
+    m_autoCopyCheck->setChecked(Constants::DEFAULT_AUTO_COPY_RESULT);
+
+    // 恢复默认行间公式环境
+    int index = m_displayMathCombo->findData(Constants::DEFAULT_DISPLAY_MATH_ENV);
+    if (index != -1) m_displayMathCombo->setCurrentIndex(index);
+
+    // 恢复默认外部程序（空）
+    m_externalProcessorEdit->clear();
 }

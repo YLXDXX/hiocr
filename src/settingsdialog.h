@@ -24,6 +24,8 @@ private:
 
     QLineEdit* m_serverUrlEdit;
 
+    QLineEdit* m_externalProcessorEdit; // 新增
+
     // 快捷键编辑
     QLineEdit* m_scScreenshotEdit;
     QLineEdit* m_scTextEdit;
@@ -38,6 +40,9 @@ private:
 
     QPushButton* m_saveBtn;
     QPushButton* m_defaultBtn;
+
+    QCheckBox* m_autoCopyCheck;           // 新增
+    QCheckBox* m_autoRecognizeCheck;      // 新增
 };
 
 #endif // SETTINGSDIALOG_H

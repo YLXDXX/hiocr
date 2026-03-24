@@ -82,3 +82,41 @@ void SettingsManager::setDisplayMathEnvironment(const QString& env) {
         emit displayMathEnvironmentChanged(env);
     }
 }
+
+
+QString SettingsManager::externalProcessorCommand() const {
+    return m_settings.value("external_processor/command", Constants::DEFAULT_EXTERNAL_PROCESSOR).toString();
+}
+
+void SettingsManager::setExternalProcessorCommand(const QString& cmd) {
+    if (externalProcessorCommand() != cmd) {
+        m_settings.setValue("external_processor/command", cmd);
+        emit externalProcessorCommandChanged(cmd);
+    }
+}
+
+
+
+bool SettingsManager::autoCopyResult() const {
+    return m_settings.value("behavior/auto_copy_result", Constants::DEFAULT_AUTO_COPY_RESULT).toBool();
+}
+
+void SettingsManager::setAutoCopyResult(bool enabled) {
+    if (autoCopyResult() != enabled) {
+        m_settings.setValue("behavior/auto_copy_result", enabled);
+        emit autoCopyResultChanged(enabled);
+    }
+}
+
+bool SettingsManager::autoRecognizeOnScreenshot() const {
+    return m_settings.value("behavior/auto_recognize_screenshot", Constants::DEFAULT_AUTO_RECOGNIZE_SCREENSHOT).toBool();
+}
+
+void SettingsManager::setAutoRecognizeOnScreenshot(bool enabled) {
+    if (autoRecognizeOnScreenshot() != enabled) {
+        m_settings.setValue("behavior/auto_recognize_screenshot", enabled);
+        emit autoRecognizeOnScreenshotChanged(enabled);
+    }
+}
+
+

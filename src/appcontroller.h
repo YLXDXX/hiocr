@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QImage>
+#include <QClipboard>
 
 class MainWindow;
 class ScreenshotManager;
@@ -27,6 +28,7 @@ public:
 
 public slots:
     // --- 动作触发入口 ---
+    void onRecognitionFinished(const QString& markdown);
     void takeScreenshot();             // 通用截图
     void takeTextRecognizeScreenshot(); // 文字识别截图
     void takeFormulaRecognizeScreenshot(); // 公式识别截图

@@ -33,11 +33,26 @@ public:
     QString displayMathEnvironment() const;
     void setDisplayMathEnvironment(const QString& env);
 
+    // 外部程序设置
+    QString externalProcessorCommand() const;
+    void setExternalProcessorCommand(const QString& cmd);
+
+    // 【新增】行为设置
+    bool autoCopyResult() const;
+    void setAutoCopyResult(bool enabled);
+
+    bool autoRecognizeOnScreenshot() const;
+    void setAutoRecognizeOnScreenshot(bool enabled);
+
 signals:
     void serverUrlChanged(const QString& url);
     void shortcutsChanged();
     void autoUseLastPromptChanged(bool enabled);
     void displayMathEnvironmentChanged(const QString& env);
+    void externalProcessorCommandChanged(const QString& cmd);
+
+    void autoCopyResultChanged(bool enabled);
+    void autoRecognizeOnScreenshotChanged(bool enabled);
 
 private:
     explicit SettingsManager(QObject* parent = nullptr);
