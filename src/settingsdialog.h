@@ -5,7 +5,7 @@
 #include <QLineEdit>
 #include <QCheckBox>
 #include <QPushButton>
-#include <QComboBox> // 新增：引入 QComboBox 头文件
+#include <QComboBox>
 
 class SettingsDialog : public QDialog
 {
@@ -23,8 +23,7 @@ private:
     void setupUi();
 
     QLineEdit* m_serverUrlEdit;
-
-    QLineEdit* m_externalProcessorEdit; // 新增
+    QLineEdit* m_externalProcessorEdit;
 
     // 快捷键编辑
     QLineEdit* m_scScreenshotEdit;
@@ -35,14 +34,15 @@ private:
     // 行为设置
     QCheckBox* m_autoUseLastPromptCheck;
 
-    // 【新增】显示设置：行间公式环境选择
+    // 显示设置
     QComboBox* m_displayMathCombo;
+    QComboBox* m_mathFontCombo; // 【新增】字体选择框
 
     QPushButton* m_saveBtn;
     QPushButton* m_defaultBtn;
 
-    QCheckBox* m_autoCopyCheck;           // 新增
-    QCheckBox* m_autoRecognizeCheck;      // 新增
+    QCheckBox* m_autoCopyCheck;
+    QCheckBox* m_autoRecognizeCheck;
 };
 
 #endif // SETTINGSDIALOG_H

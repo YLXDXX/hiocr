@@ -18,14 +18,17 @@ namespace Constants {
     const QString SHORTCUT_FORMULA = "Ctrl+Shift+F";
     const QString SHORTCUT_TABLE = "Ctrl+Shift+B";
 
-    // 【新增】默认行间公式环境
-    // 可选值: "$$", "equation", "align" 等
+    // --- 显示设置 ---
     const QString DEFAULT_DISPLAY_MATH_ENV = "$$";
 
-    const QString DEFAULT_EXTERNAL_PROCESSOR = ""; // 【新增】默认外部处理程序（空表示未配置）
+    // 【新增】默认数学字体 (对应资源文件名后缀)
+    // 可选值: "Latin-Modern", "Asana", "STIX2", "Libertinus", "NotoSans", "Local"
+    const QString DEFAULT_MATH_FONT = "Latin-Modern";
 
-    const bool DEFAULT_AUTO_COPY_RESULT = true;          // 默认开启自动复制
-    const bool DEFAULT_AUTO_RECOGNIZE_SCREENSHOT = true; // 默认开启截图后自动识别
+    const QString DEFAULT_EXTERNAL_PROCESSOR = "";
+
+    const bool DEFAULT_AUTO_COPY_RESULT = true;
+    const bool DEFAULT_AUTO_RECOGNIZE_SCREENSHOT = true;
 }
 
 #endif // CONSTANTS_H

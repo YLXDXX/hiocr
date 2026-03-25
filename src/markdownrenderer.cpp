@@ -1,10 +1,13 @@
 #include "markdownrenderer.h"
 #include "markdownbridge.h"
+#include "settingsmanager.h" // 引入设置管理器
+
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QFile>
 #include <QTextStream>
 #include <QWebEngineSettings>
+
 
 MarkdownRenderer::MarkdownRenderer(QWidget* parent)
 : QWidget(parent), m_loaded(false)
@@ -14,29 +17,33 @@ MarkdownRenderer::MarkdownRenderer(QWidget* parent)
 
 void MarkdownRenderer::setupUi()
 {
-    // 主布局：垂直排列，无外边距，控件间小间距
     QVBoxLayout* layout = new QVBoxLayout(this);
-    layout->setContentsMargins(0, 0, 0, 0);   // 去除四周空白
-    layout->setSpacing(2);                    // 控件之间间距 2 像素，保持紧凑
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(2);
 
-    // 标题标签：垂直方向使用 Minimum 策略，不占用多余高度
     QLabel* titleLabel = new QLabel("Markdown 渲染结果:", this);
     titleLabel->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Minimum);
     titleLabel->setContentsMargins(0, 0, 0, 0);
     layout->addWidget(titleLabel);
 
-    // 创建 WebEngineView
     m_view = new QWebEngineView(this);
     m_view->settings()->setAttribute(QWebEngineSettings::JavascriptEnabled, true);
     connect(m_view, &QWebEngineView::loadFinished, this, &MarkdownRenderer::onPageLoaded);
 
     // 设置 WebChannel 和 Bridge
     m_bridge = new MarkdownBridge(this);
+
+    // 【新增】初始化字体设置
+    m_bridge->setMathFont(SettingsManager::instance()->mathFont());
+
+    // 【新增】连接信号，当设置中的字体改变时，更新 Bridge
+    connect(SettingsManager::instance(), &SettingsManager::mathFontChanged, m_bridge, &MarkdownBridge::setMathFont);
+
     m_channel = new QWebChannel(this);
     m_channel->registerObject("bridge", m_bridge);
     m_view->page()->setWebChannel(m_channel);
 
-    // 加载 HTML 模板（从资源文件）
+    // 加载 HTML 模板
     QFile htmlFile(":/resources/markdown_renderer.html");
     if (htmlFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
         QTextStream stream(&htmlFile);
@@ -46,7 +53,6 @@ void MarkdownRenderer::setupUi()
         m_view->setHtml("<body>Error loading renderer</body>");
     }
 
-    // WebEngineView 垂直方向可拉伸，以填充剩余空间
     m_view->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     layout->addWidget(m_view);
 }

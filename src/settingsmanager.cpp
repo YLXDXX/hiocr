@@ -24,6 +24,18 @@ void SettingsManager::setServerUrl(const QString& url) {
     }
 }
 
+// 【新增】实现
+QString SettingsManager::mathFont() const {
+    return m_settings.value("display/math_font", Constants::DEFAULT_MATH_FONT).toString();
+}
+
+void SettingsManager::setMathFont(const QString& font) {
+    if (mathFont() != font) {
+        m_settings.setValue("display/math_font", font);
+        emit mathFontChanged(font);
+    }
+}
+
 QString SettingsManager::screenshotShortcut() const {
     return m_settings.value("shortcuts/screenshot", Constants::SHORTCUT_SCREENSHOT).toString();
 }

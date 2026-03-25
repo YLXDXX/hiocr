@@ -33,11 +33,14 @@ public:
     QString displayMathEnvironment() const;
     void setDisplayMathEnvironment(const QString& env);
 
+    // 【新增】数学字体设置
+    QString mathFont() const;
+    void setMathFont(const QString& font);
+
     // 外部程序设置
     QString externalProcessorCommand() const;
     void setExternalProcessorCommand(const QString& cmd);
 
-    // 【新增】行为设置
     bool autoCopyResult() const;
     void setAutoCopyResult(bool enabled);
 
@@ -49,6 +52,7 @@ signals:
     void shortcutsChanged();
     void autoUseLastPromptChanged(bool enabled);
     void displayMathEnvironmentChanged(const QString& env);
+    void mathFontChanged(const QString& font); // 【新增】
     void externalProcessorCommandChanged(const QString& cmd);
 
     void autoCopyResultChanged(bool enabled);

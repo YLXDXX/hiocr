@@ -6,7 +6,7 @@
     <script src="qrc:/resources/marked.min.js"></script>
     <script src="qrc:/resources/temml/temml.min.js"></script>
 
-    <!-- Temml 扩展支持 (化学、物理、texvc) -->
+    <!-- Temml 扩展支持 -->
     <script src="qrc:/resources/temml/mhchem.min.js"></script>
     <script src="qrc:/resources/temml/physics.js"></script>
     <script src="qrc:/resources/temml/texvc.js"></script>
@@ -16,7 +16,7 @@
     <link rel="stylesheet" href="qrc:/resources/highlight/atom-one-dark.min.css">
 
     <!-- 默认数学字体 -->
-    <link rel="stylesheet" href="qrc:/resources/temml/Temml-Latin-Modern.css">
+    <link rel="stylesheet" href="qrc:/resources/temml/Temml-Latin-Modern.css" id="math-font-css">
 
     <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
 
@@ -25,40 +25,15 @@
         html, body {
             height: 100%; margin: 0; padding: 0;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-            font-size: 16px; line-height: 1.6; color: #24292e;
+            font-size: 18px; line-height: 1.6; color: #24292e;
             background-color: #fff; overflow-y: auto;
             word-wrap: break-word;
         }
 
         #content {
             width: 90%; max-width: 850px; margin: 20px auto;
-            padding: 20px; padding-top: 50px;
+            padding: 20px;
             box-sizing: border-box;
-        }
-
-        /* === 顶部工具栏 === */
-        #toolbar {
-            position: fixed;
-            top: 10px;
-            right: 15px;
-            z-index: 100;
-            background: rgba(255, 255, 255, 0.95);
-            padding: 5px 10px;
-            border-radius: 6px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            font-size: 14px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            border: 1px solid #e1e4e8;
-        }
-        #toolbar label { font-weight: 500; color: #555; }
-        #toolbar select {
-            border: 1px solid #d1d5da;
-            border-radius: 4px;
-            padding: 4px 8px;
-            background-color: #fff;
-            cursor: pointer;
         }
 
         /* === Markdown 样式 === */
@@ -85,19 +60,6 @@
     </style>
 </head>
 <body>
-
-    <div id="toolbar">
-        <label for="MathFont">Math Font:</label>
-        <select id="MathFont" onchange="updateMathFont()">
-            <option value="Latin-Modern">Latin Modern</option>
-            <option value="Asana">Asana</option>
-            <option value="STIX2">STIX Two</option>
-            <option value="Libertinus">Libertinus</option>
-            <option value="NotoSans">Noto Sans</option>
-            <option value="Local">Local</option>
-        </select>
-    </div>
-
     <div id="content"></div>
 
     <script>
@@ -114,58 +76,45 @@
                 }
             });
 
-            // 2. 数学公式 tokenizer (提取为独立函数，彻底解决作用域问题)
+            // 2. 数学公式 tokenizer
             function mathTokenizer(src) {
                 var match;
-
-                // 匹配块级公式 $$...$$                 match = src.match(/^\$\$\s*([\s\S]+?)\s*\$\$/);
-                if (match) {
-                    return { type: 'math', raw: match[0], text: match[0], display: true };
-                }
-
-                // 匹配行内公式 $...$                 // 支持 \right\{ 等复杂转义，支持 physics.js 和 mhchem 的语法
+                match = src.match(/^\$\$\s*([\s\S]+?)\s*\$\$/);
+                if (match) return { type: 'math', raw: match[0], text: match[0], display: true };
                 match = src.match(/^\$((?:[^\$]|\\\$)+?)\$/);
-                if (match) {
-                    return { type: 'math', raw: match[0], text: match[0], display: false };
-                }
-
+                if (match) return { type: 'math', raw: match[0], text: match[0], display: false };
                 return undefined;
             }
 
-            // 3. 注册扩展
             const mathExtension = {
-                name: 'math',
-                level: 'inline',
+                name: 'math', level: 'inline',
                 start(src) { return src.indexOf('$'); },
-                tokenizer: mathTokenizer, // 引用外部函数
+                tokenizer: mathTokenizer,
                 renderer(token) { return token.text; }
             };
-
             marked.use({ extensions: [mathExtension] });
 
-            // 4. 字体切换功能
-            window.updateMathFont = function() {
-                const fontName = document.getElementById("MathFont").value;
-                const temmlRegEx = /Temml-.+\.css$/;
-                const links = [...document.head.getElementsByTagName('link')];
-
-                links.forEach(link => {
-                    if (temmlRegEx.test(link.href)) {
-                        link.setAttribute("href", `qrc:/resources/temml/Temml-${fontName}.css`);
-                    }
-                });
+            // 3. 字体切换函数 (由 Qt 调用)
+            function updateMathFont(fontName) {
+                var link = document.getElementById('math-font-css');
+                if (!link) return;
+                // 构建新 CSS 路径
+                // fontName 格式: "Latin-Modern", "Asana", "STIX2" 等
+                var newHref = 'qrc:/resources/temml/Temml-' + fontName + '.css';
+                if (link.getAttribute('href') !== newHref) {
+                    link.setAttribute('href', newHref);
+                }
             }
 
-            // 5. 渲染函数
+            // 4. 渲染函数
             function renderMarkdown(markdown) {
-                const contentDiv = document.getElementById('content');
-                const oldScrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+                var contentDiv = document.getElementById('content');
+                var oldScrollTop = document.documentElement.scrollTop || document.body.scrollTop;
 
                 if (!markdown) { contentDiv.innerHTML = ''; return; }
 
                 try {
                     contentDiv.innerHTML = marked.parse(markdown);
-
                     if (typeof temml !== 'undefined') {
                         temml.renderMathInElement(contentDiv, {
                             delimiters: [
@@ -174,29 +123,42 @@
                                 { left: '\\(', right: '\\)', display: false },
                                 { left: '\\[', right: '\\]', display: true }
                             ],
-                            trust: true,
-                            macros: {}
+                            trust: true, macros: {}
                         });
                     }
-
                 } catch (e) {
                     console.error('Render Error:', e);
-                    const errorMsg = document.createElement('div');
+                    var errorMsg = document.createElement('div');
                     errorMsg.className = 'error';
                     errorMsg.innerHTML = 'Render Error: ' + e.message;
                     contentDiv.prepend(errorMsg);
                 }
-
                 window.scrollTo(0, oldScrollTop);
             }
 
-            // 6. Qt WebChannel
+            // 5. Qt WebChannel 初始化
             new QWebChannel(qt.webChannelTransport, function(channel) {
                 window.bridge = channel.objects.bridge;
+
+                // 连接 Markdown 变化信号
+                bridge.markdownChanged.connect(renderMarkdown);
+
+                // 【新增】连接字体变化信号
+                bridge.mathFontChanged.connect(updateMathFont);
+
+                // 【新增】初始化：如果 bridge 已经有属性值，立即应用
+                // 注意：Qt WebChannel 属性初始可能为空，需要等待信号或直接读取
+                // 但通常在连接建立时，如果 C++ 端已经 setProperty，这里可以直接读取
+
+                // 初始渲染
                 if (bridge.markdown) {
                     renderMarkdown(bridge.markdown);
                 }
-                bridge.markdownChanged.connect(renderMarkdown);
+
+                // 初始字体应用
+                if (bridge.mathFont) {
+                    updateMathFont(bridge.mathFont);
+                }
             });
         })();
     </script>
