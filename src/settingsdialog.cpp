@@ -10,6 +10,9 @@
 #include <QDialogButtonBox>
 #include <QLabel>
 #include <QSpinBox>
+#include <QScrollArea>
+#include <QFrame>
+
 
 SettingsDialog::SettingsDialog(QWidget *parent) : QDialog(parent)
 {
@@ -20,9 +23,27 @@ SettingsDialog::SettingsDialog(QWidget *parent) : QDialog(parent)
 void SettingsDialog::setupUi()
 {
     setWindowTitle("设置");
-    resize(450, 550); // 稍微增加高度以容纳新组件
+    // 【修改】稍微增加默认高度，宽度保持不变
+    resize(500, 650);
 
-    QVBoxLayout* mainLayout = new QVBoxLayout(this);
+    // --- 主布局：包含滚动区域和底部按钮 ---
+    QVBoxLayout* dialogLayout = new QVBoxLayout(this);
+    dialogLayout->setContentsMargins(0, 0, 0, 0); // 去除外边框，让滚动条看起来更自然
+    dialogLayout->setSpacing(0);
+
+    // --- 1. 创建滚动区域 ---
+    QScrollArea* scrollArea = new QScrollArea(this);
+    scrollArea->setWidgetResizable(true); // 关键：允许内部控件自动调整宽度
+    scrollArea->setFrameShape(QFrame::NoFrame); // 去掉滚动区域的边框
+    scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff); // 禁用横向滚动
+
+    // 创建滚动区域的内容容器
+    QWidget* scrollContent = new QWidget();
+    QVBoxLayout* mainLayout = new QVBoxLayout(scrollContent);
+    mainLayout->setContentsMargins(20, 20, 20, 10); // 设置内容区域的边距
+    mainLayout->setSpacing(15); // 设置各个 GroupBox 之间的间距
+
+    // ========== 以下为原有的设置项代码 (布局在 mainLayout 中) ==========
 
     // --- 服务器设置 ---
     QGroupBox* serverGroup = new QGroupBox("服务器设置");
@@ -87,8 +108,8 @@ void SettingsDialog::setupUi()
     externalLayout->addWidget(m_externalProcessorEdit);
     mainLayout->addWidget(externalGroup);
 
-    // --- 【新增】高级参数设置 ---
-    QGroupBox* advancedGroup = new QGroupBox("高级请求参数"); // 修正：添加了右引号
+    // --- 高级参数设置 ---
+    QGroupBox* advancedGroup = new QGroupBox("高级请求参数");
     QVBoxLayout* advLayout = new QVBoxLayout(advancedGroup);
 
     QLabel* advHint = new QLabel("直接编辑 JSON 对象，将合并到请求体中。\n支持参数: temperature, max_tokens, top_p 等。");
@@ -100,6 +121,8 @@ void SettingsDialog::setupUi()
     font.setStyleHint(QFont::Monospace);
     m_requestParamsEdit->setFont(font);
     m_requestParamsEdit->setPlaceholderText("{\"temperature\": 0.7}");
+    // 限制高度，避免 JSON 编辑框占用过多空间
+    m_requestParamsEdit->setMaximumHeight(100);
 
     advLayout->addWidget(advHint);
     advLayout->addWidget(m_requestParamsEdit);
@@ -129,14 +152,37 @@ void SettingsDialog::setupUi()
 
     mainLayout->addWidget(serviceGroup);
 
-    // --- 按钮 ---
+    // 添加一个垂直弹簧，将所有设置项顶上去
+    mainLayout->addStretch();
+
+    // --- 2. 将内容容器设置给滚动区域 ---
+    scrollArea->setWidget(scrollContent);
+
+    // --- 3. 将滚动区域添加到对话框主布局 ---
+    dialogLayout->addWidget(scrollArea);
+
+    // --- 4. 底部按钮区域 (固定在底部) ---
+    QWidget* bottomWidget = new QWidget();
+    QVBoxLayout* bottomLayout = new QVBoxLayout(bottomWidget);
+    bottomLayout->setContentsMargins(20, 10, 20, 20); // 左、上、右、下边距
+
     QDialogButtonBox* buttonBox = new QDialogButtonBox(QDialogButtonBox::Save | QDialogButtonBox::RestoreDefaults);
     connect(buttonBox, &QDialogButtonBox::accepted, this, &SettingsDialog::onSaveClicked);
     QPushButton* restoreBtn = buttonBox->button(QDialogButtonBox::RestoreDefaults);
     if (restoreBtn) {
         connect(restoreBtn, &QPushButton::clicked, this, &SettingsDialog::onRestoreDefaults);
     }
-    mainLayout->addWidget(buttonBox);
+    bottomLayout->addWidget(buttonBox);
+
+    // 分隔线（可选，视觉上区分内容和按钮）
+    QFrame* separator = new QFrame();
+    separator->setFrameShape(QFrame::HLine);
+    separator->setFrameShadow(QFrame::Sunken);
+    // 在布局中先加分隔线再加按钮，或者加在 top/bottom margin 里
+    // 这里我们把它加在按钮上方
+    bottomLayout->insertWidget(0, separator);
+
+    dialogLayout->addWidget(bottomWidget);
 }
 
 void SettingsDialog::loadSettings()
