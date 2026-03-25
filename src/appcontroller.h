@@ -76,6 +76,9 @@ private:
     // 用于暂存识别请求（当服务正在启动时）
     QString m_pendingPrompt;
     QString m_pendingBase64;
+
+    // 【新增】标记是否需要在服务启动后重试识别
+    bool m_retryAfterServiceStart = false;
 };
 
 #endif // APPCONTROLLER_H

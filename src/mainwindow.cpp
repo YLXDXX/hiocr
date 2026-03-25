@@ -5,8 +5,8 @@
 #include "promptbar.h"
 #include "imageprocessor.h"
 #include "screenshotareaselector.h"
-#include "settingsmanager.h" // 引入设置管理器
-#include "markdowncopybar.h" // 引入新组件
+#include "settingsmanager.h"
+#include "markdowncopybar.h"
 
 #include <QSplitter>
 #include <QVBoxLayout>
@@ -30,7 +30,7 @@
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
 {
     setupUi();
-    setupMenuBar(); // 构建菜单
+    setupMenuBar();
     setupConnections();
 }
 
@@ -55,25 +55,20 @@ void MainWindow::setupUi()
     leftSplitter->addWidget(m_markdownRenderer);
     leftSplitter->setSizes({400, 400});
 
-    // 右侧布局调整
+    // 右侧布局
     QSplitter* rightSplitter = new QSplitter(Qt::Vertical);
     mainSplitter->addWidget(rightSplitter);
 
     m_promptBar = new PromptBar(this);
     rightSplitter->addWidget(m_promptBar);
 
-    // 创建 Markdown 容器
     QWidget* markdownContainer = new QWidget(this);
     QVBoxLayout* mdLayout = new QVBoxLayout(markdownContainer);
     mdLayout->setContentsMargins(0, 0, 0, 0);
     mdLayout->setSpacing(2);
 
     m_markdownSource = new MarkdownSourceEditor(this);
-
-    // 创建复制栏
     m_copyBar = new MarkdownCopyBar(this);
-
-    // 【关键修改】将编辑器指针传递给复制栏
     m_copyBar->setSourceEditor(m_markdownSource);
 
     mdLayout->addWidget(m_markdownSource);
@@ -120,11 +115,16 @@ void MainWindow::setupMenuBar()
         // --- 工具菜单 ---
         QMenu* toolsMenu = menuBar->addMenu("工具");
         QAction* extAct = toolsMenu->addAction("外部程序处理并复制", this, &MainWindow::onExternalProcessTriggered);
-        extAct->setShortcut(QKeySequence("Ctrl+Shift+E")); // 可选快捷键
+        extAct->setShortcut(QKeySequence("Ctrl+Shift+E"));
+
+        // 【新增】停止服务菜单项
+        m_stopServiceAction = toolsMenu->addAction("停止识别服务", this, [this](){
+            emit stopServiceRequested();
+        });
+        m_stopServiceAction->setEnabled(false); // 默认禁用
 
         // --- 设置菜单 ---
         QMenu* settingsMenu = menuBar->addMenu("设置");
-        // 【修改】不再直接弹出输入框，而是发射信号通知 AppController 打开设置窗口
         settingsMenu->addAction("首选项", this, [this](){
             emit settingsTriggered();
         });
@@ -132,18 +132,11 @@ void MainWindow::setupMenuBar()
 
 void MainWindow::setupConnections()
 {
-    // 内部 UI 连接
     connect(m_markdownSource, &QPlainTextEdit::textChanged, this, &MainWindow::onMarkdownSourceChanged);
-
-    // 粘贴
     connect(m_pasteShortcut, &QShortcut::activated, this, &MainWindow::onPasteImage);
-
-    // 【修复问题3】正确连接 PromptBar 信号
     connect(m_promptBar, &PromptBar::recognizeRequested, this, &MainWindow::onPromptBarRecognize);
     connect(m_promptBar, &PromptBar::autoRecognizeRequested, this, &MainWindow::onPromptBarAutoRecognize);
 }
-
-// --- 公共接口实现 ---
 
 void MainWindow::setImage(const QImage& image) {
     m_imageView->setImage(image);
@@ -162,21 +155,16 @@ void MainWindow::setBusy(bool busy) {
     m_promptBar->setButtonsBusy(busy);
 }
 
-// 【新增】设置提示词
 void MainWindow::setPrompt(const QString& prompt) {
     m_promptBar->setPrompt(prompt);
 }
 
 void MainWindow::startAreaSelection(const QImage& fullImage) {
-    // 获取当前鼠标所在的屏幕，或者主屏幕
     QScreen *screen = QGuiApplication::screenAt(QCursor::pos());
     if (!screen) {
         screen = QGuiApplication::primaryScreen();
     }
-
-    // 传入 screen 指针
     ScreenshotAreaSelector selector(fullImage, screen, nullptr);
-
     if (selector.exec() == QDialog::Accepted) {
         QRect rect = selector.selectedRect();
         if (!rect.isNull() && rect.isValid()) {
@@ -189,16 +177,22 @@ void MainWindow::startAreaSelection(const QImage& fullImage) {
     }
 }
 
-// --- 事件处理 ---
+// 【新增】实现状态更新槽函数
+void MainWindow::updateStopServiceAction(bool isRunning)
+{
+    if (m_stopServiceAction) {
+        m_stopServiceAction->setEnabled(isRunning);
+        // 可选：更新文本以提示状态
+        m_stopServiceAction->setText(isRunning ? "停止识别服务 (运行中)" : "停止识别服务 (未运行)");
+    }
+}
+
 void MainWindow::keyPressEvent(QKeyEvent *event)
 {
-    // 如果按下 ESC 键，调用 close()
-    // 这会触发 closeEvent，进而执行 hide() 隐藏窗口
     if (event->key() == Qt::Key_Escape) {
         close();
-        event->accept(); // 事件已处理，不再向下传递
+        event->accept();
     } else {
-        // 其他按键按默认方式处理
         QMainWindow::keyPressEvent(event);
     }
 }
@@ -207,8 +201,6 @@ void MainWindow::closeEvent(QCloseEvent *event) {
     event->ignore();
     hide();
 }
-
-// --- 内部槽 ---
 
 void MainWindow::onPasteImage() {
     QWidget* focus = QApplication::focusWidget();
@@ -230,17 +222,13 @@ void MainWindow::onMarkdownSourceChanged() {
     m_markdownRenderer->setMarkdown(m_markdownSource->toPlainText());
 }
 
-// 【新增】处理 PromptBar 信号转发
 void MainWindow::onPromptBarRecognize() {
-    // 发射信号，带上当前的提示词和图片 Base64
     emit recognizeRequested(m_promptBar->prompt(), m_imageView->currentBase64());
 }
 
 void MainWindow::onPromptBarAutoRecognize(const QString& prompt) {
-    // 自动识别时，PromptBar 已经更新了内部的 prompt，直接读取即可
     emit recognizeRequested(prompt, m_imageView->currentBase64());
 }
-
 
 void MainWindow::onExternalProcessTriggered()
 {
@@ -256,25 +244,13 @@ void MainWindow::onExternalProcessTriggered()
         return;
     }
 
-    // 创建进程
     QProcess* process = new QProcess(this);
-
-    // 连接结束信号
     connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
             this, &MainWindow::onExternalProcessFinished);
 
-    // 启动命令 (Qt6 推荐使用 startCommand，它会自动处理参数分割)
-    // 如果使用 Qt5，请使用 process->start(command, QProcess::Unbuffered);
     process->startCommand(command);
-
-    // 写入输入
     process->write(currentText.toUtf8());
-    process->closeWriteChannel(); // 发送 EOF，通知外部程序输入结束
-
-    // 为了更好的用户体验，可以在这里显示一个等待状态，但简单起见我们先同步处理
-    // 注意：process->waitForFinished() 会阻塞 UI，如果外部程序运行时间长，
-    // 建议在 onExternalProcessFinished 中处理结果。
-    // 这里我们使用异步方式，不阻塞 UI。
+    process->closeWriteChannel();
 }
 
 void MainWindow::onExternalProcessFinished(int exitCode, QProcess::ExitStatus exitStatus)
@@ -287,18 +263,13 @@ void MainWindow::onExternalProcessFinished(int exitCode, QProcess::ExitStatus ex
         if (error.isEmpty()) error = "进程异常退出或返回非零代码。";
         QMessageBox::critical(this, "处理失败", error);
     } else {
-        // 读取标准输出
         QString result = QString::fromUtf8(process->readAllStandardOutput());
-
         if (result.isEmpty()) {
             QMessageBox::warning(this, "提示", "外部程序未返回任何内容。");
         } else {
-            // 【关键】将结果复制到剪贴板，不修改源码编辑器
             QApplication::clipboard()->setText(result);
-            // 可选：显示提示
             statusBar()->showMessage("已通过外部程序处理并复制到剪贴板", 3000);
         }
     }
-
-    process->deleteLater(); // 清理进程对象
+    process->deleteLater();
 }

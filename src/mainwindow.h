@@ -10,6 +10,7 @@ class MarkdownSourceEditor;
 class PromptBar;
 class QShortcut;
 class MarkdownCopyBar;
+class QAction; // 前向声明
 
 class MainWindow : public QMainWindow
 {
@@ -27,15 +28,19 @@ public:
     void setPrompt(const QString& prompt);
     void startAreaSelection(const QImage& fullImage);
 
+public slots:
+    // 【新增】更新停止服务菜单项的状态
+    void updateStopServiceAction(bool isRunning);
+
 signals:
     void recognizeRequested(const QString& prompt, const QString& base64Image);
     void imagePasted(const QImage& image);
     void areaSelected(const QRect& rect);
     void settingsTriggered();
     void screenshotRequested();
+    void stopServiceRequested(); // 【新增】停止服务信号
 
 protected:
-    // 【新增】重写按键事件
     void keyPressEvent(QKeyEvent *event) override;
     void closeEvent(QCloseEvent *event) override;
 
@@ -45,8 +50,8 @@ private slots:
     void onPromptBarRecognize();
     void onPromptBarAutoRecognize(const QString& prompt);
 
-    void onExternalProcessTriggered(); // 新增槽函数
-    void onExternalProcessFinished(int exitCode, QProcess::ExitStatus exitStatus); // 新增
+    void onExternalProcessTriggered();
+    void onExternalProcessFinished(int exitCode, QProcess::ExitStatus exitStatus);
 
 private:
     void setupUi();
@@ -60,6 +65,9 @@ private:
     PromptBar* m_promptBar;
     QShortcut* m_pasteShortcut;
     MarkdownCopyBar* m_copyBar;
+
+    // 【新增】菜单项
+    QAction* m_stopServiceAction = nullptr;
 };
 
 #endif // MAINWINDOW_H

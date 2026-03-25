@@ -2,6 +2,13 @@
 #include "settingsmanager.h"
 #include <QDebug>
 
+// 【新增】Linux 特定头文件
+#ifdef Q_OS_LINUX
+#include <sys/types.h>
+#include <signal.h>
+#include <unistd.h>
+#endif
+
 ServiceManager::ServiceManager(QObject *parent) : QObject(parent)
 {
     m_process = new QProcess(this);
@@ -14,17 +21,19 @@ ServiceManager::ServiceManager(QObject *parent) : QObject(parent)
     connect(m_idleTimer, &QTimer::timeout, this, &ServiceManager::onIdleTimeout);
 }
 
+ServiceManager::~ServiceManager()
+{
+    stopService();
+}
+
 void ServiceManager::ensureRunning()
 {
-    // 如果进程已经在运行或正在启动中，直接认为已就绪
     if (m_process->state() == QProcess::Running || m_isStarting) {
         emit serviceReady();
         return;
     }
 
-    // 检查设置是否启用自动启动
     if (!SettingsManager::instance()->autoStartService()) {
-        // 用户禁用了自动启动，直接返回 Ready 让业务逻辑继续（业务逻辑会处理连接失败的错误）
         emit serviceReady();
         return;
     }
@@ -42,22 +51,30 @@ void ServiceManager::startServiceInternal()
 
     qDebug() << "Starting OCR service with command:" << command;
     m_isStarting = true;
+    m_manualStop = false; // 重置标志
 
-    // 使用 startCommand (Qt 6) 或 split + start (Qt 5)
-    // 这里假设是 Qt 6 环境
+    #ifdef Q_OS_LINUX
+    // 【关键修复】设置子进程修饰符，让启动的进程（及其子进程）拥有独立的进程组 (PGID)
+    // 这样才能通过 kill(-pid) 杀死整个进程树（包括 bash 和 python）
+    m_process->setChildProcessModifier([]() {
+        setpgid(0, 0);
+    });
+    #endif
+
     m_process->startCommand(command);
 
-    // 给服务一点时间启动，这里简单处理：启动后等待一小会儿发出 ready 信号
-    // 更高级的做法是轮询健康检查端点，这里为了简单使用延时策略
     QTimer::singleShot(2000, this, [this](){
-        if (m_process->state() == QProcess::Running) {
-            qDebug() << "Service process started successfully.";
+        if (m_isStarting) {
             m_isStarting = false;
-            emit serviceReady();
-        } else {
-            // 如果进程启动失败或立即退出了，onProcessError 会处理
-            // 这里防止卡死
-            m_isStarting = false;
+            if (m_process->state() == QProcess::Running) {
+                qDebug() << "Service process started successfully. PID:" << m_process->processId();
+                emit runningStateChanged(true);
+                emit serviceReady();
+            } else {
+                qWarning() << "Service process failed to stay running after 2s.";
+                emit errorOccurred("服务启动超时或命令执行失败，请检查命令配置。");
+                emit runningStateChanged(false);
+            }
         }
     });
 }
@@ -66,41 +83,93 @@ void ServiceManager::stopService()
 {
     if (m_process->state() != QProcess::NotRunning) {
         qDebug() << "Stopping OCR service...";
+
+        // 【关键修复】标记为主动停止，屏蔽后续的 Crashed 错误信号
+        m_manualStop = true;
+
+        #ifdef Q_OS_LINUX
+        pid_t pid = m_process->processId();
+        if (pid > 0) {
+            // 1. 向整个进程组发送 SIGTERM (优雅退出)
+            // 此时 PID == PGID (因为我们在 start 时设置了 setpgid)
+            if (kill(-pid, SIGTERM) == 0) {
+                // 等待进程退出
+                if (!m_process->waitForFinished(3000)) {
+                    // 2. 超时后发送 SIGKILL (强制退出)
+                    qDebug() << "Service still running, sending SIGKILL to group" << pid;
+                    kill(-pid, SIGKILL);
+                    m_process->waitForFinished(1000);
+                }
+            } else {
+                // 如果 kill 失败（极少情况），回退到 Qt 默认方式
+                qWarning() << "Failed to kill process group" << pid << ", fallback to terminate.";
+                m_process->terminate();
+                if (!m_process->waitForFinished(3000)) {
+                    m_process->kill();
+                    m_process->waitForFinished(1000);
+                }
+            }
+        }
+        #else
+        // Windows/其他平台使用默认方式
         m_process->terminate();
-        // 如果 3 秒后还没关掉，强制 Kill
         if (!m_process->waitForFinished(3000)) {
             m_process->kill();
+            m_process->waitForFinished(1000);
         }
+        #endif
+        emit runningStateChanged(false);
     }
     m_idleTimer->stop();
+}
+
+bool ServiceManager::isRunning() const
+{
+    return m_process->state() == QProcess::Running;
 }
 
 void ServiceManager::resetIdleTimer()
 {
     int timeoutMinutes = SettingsManager::instance()->serviceIdleTimeout();
-
-    // -1 代表永不自动关闭
     if (timeoutMinutes < 0) {
         m_idleTimer->stop();
         return;
     }
-
-    m_idleTimer->start(timeoutMinutes * 60 * 1000); // 转换为毫秒
+    m_idleTimer->start(timeoutMinutes * 60 * 1000);
 }
 
 void ServiceManager::onProcessFinished(int exitCode, QProcess::ExitStatus status)
 {
     Q_UNUSED(exitCode);
-    Q_UNUSED(status);
-    qDebug() << "Service process finished.";
+
+    // 【修改】将判断提到最前面，如果是主动停止，直接返回，不输出任何日志
+    if (m_manualStop) {
+        m_manualStop = false; // 重置标志
+        return;
+    }
+
+    qDebug() << "Service process finished. ExitStatus:" << status;
     m_isStarting = false;
+
+    emit runningStateChanged(false);
+
+    if (status == QProcess::CrashExit) {
+        emit errorOccurred("服务进程意外崩溃。");
+    }
 }
 
 void ServiceManager::onProcessError(QProcess::ProcessError error)
 {
+    // 【修改】将判断提到最前面，如果是主动停止，直接返回，不输出任何日志
+    if (m_manualStop) {
+        return;
+    }
+
     qDebug() << "Service process error:" << error << m_process->errorString();
     m_isStarting = false;
+
     emit errorOccurred(m_process->errorString());
+    emit runningStateChanged(false);
 }
 
 void ServiceManager::onIdleTimeout()

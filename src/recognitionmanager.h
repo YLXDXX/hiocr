@@ -13,11 +13,14 @@ public:
 
     void setAutoUseLastPrompt(bool enabled);
     void recognize(const QString& prompt, const QString& base64Image);
-    void onImageChanged(const QString& base64Image); // 触发自动识别流程
-    void setTempPromptOverride(const QString& prompt); // 设置临时提示词（下次识别使用）
+    void onImageChanged(const QString& base64Image);
+    void setTempPromptOverride(const QString& prompt);
 
     QString lastPrompt() const;
     void setLastPrompt(const QString& prompt);
+
+    // 【新增】获取当前图片 Base64
+    QString currentBase64() const { return m_currentBase64; }
 
 signals:
     void recognitionFinished(const QString& markdown);
