@@ -51,12 +51,12 @@ void ServiceManager::startServiceInternal()
 
     qDebug() << "Starting OCR service with command:" << command;
     m_isStarting = true;
-    m_manualStop = false; // 重置标志
+    m_manualStop = false;
 
     #ifdef Q_OS_LINUX
-    // 【关键修复】设置子进程修饰符，让启动的进程（及其子进程）拥有独立的进程组 (PGID)
-    // 这样才能通过 kill(-pid) 杀死整个进程树（包括 bash 和 python）
     m_process->setChildProcessModifier([]() {
+
+        // 保留进程组设置，这对 stopService() 中的 kill(-pid) 至关重要
         setpgid(0, 0);
     });
     #endif
