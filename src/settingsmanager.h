@@ -11,6 +11,9 @@ class SettingsManager : public QObject
 public:
     static SettingsManager* instance();
 
+    // 【新增】显式同步保存到磁盘
+    void sync();
+
     // 服务器设置
     QString serverUrl() const;
     void setServerUrl(const QString& url);
@@ -74,6 +77,10 @@ signals:
 
 private:
     explicit SettingsManager(QObject* parent = nullptr);
+
+    // 【新增】初始化默认值逻辑
+    void initializeDefaults();
+
     QSettings m_settings;
 };
 

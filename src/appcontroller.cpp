@@ -219,6 +219,9 @@ void AppController::showWindow() {
 }
 
 void AppController::quitApp() {
+    // 【新增】在退出前显式保存配置
+    SettingsManager::instance()->sync();
+
     QApplication::quit();
 }
 

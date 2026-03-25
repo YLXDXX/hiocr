@@ -1,6 +1,10 @@
 #include "settingsmanager.h"
 #include "constants.h" // 引入常量
 
+#include <QFile>
+#include <QStandardPaths>
+#include <QDebug>
+
 SettingsManager* SettingsManager::instance()
 {
     static SettingsManager* s_instance = nullptr;
@@ -10,6 +14,53 @@ SettingsManager* SettingsManager::instance()
 
 SettingsManager::SettingsManager(QObject* parent) : QObject(parent)
 {
+    // 初始化默认配置（如果配置文件不存在）
+    initializeDefaults();
+}
+
+
+// 【新增】检查并初始化默认配置文件
+void SettingsManager::initializeDefaults()
+{
+    // 检测配置文件是否存在
+    // QSettings 默认存储路径在 Linux 下通常为 ~/.config/hiocr/hiocr.conf
+    QString configPath = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) + "/hiocr/hiocr.conf";
+
+    // QFile::exists 不支持检测 QSettings 的 "UserScope" 抽象路径，因此我们直接尝试读取一个关键键值
+    // 如果 server/url 键不存在，说明这是一个全新的配置环境
+    if (!m_settings.contains("server/url")) {
+        qDebug() << "Configuration file not found or empty, initializing with defaults...";
+
+        // 批量写入所有默认值
+        m_settings.setValue("server/url", Constants::DEFAULT_SERVER_URL);
+
+        m_settings.setValue("shortcuts/screenshot", Constants::SHORTCUT_SCREENSHOT);
+        m_settings.setValue("shortcuts/text_recognize", Constants::SHORTCUT_TEXT);
+        m_settings.setValue("shortcuts/formula_recognize", Constants::SHORTCUT_FORMULA);
+        m_settings.setValue("shortcuts/table_recognize", Constants::SHORTCUT_TABLE);
+
+        m_settings.setValue("auto_use_last_prompt", true);
+        m_settings.setValue("display_math_env", Constants::DEFAULT_DISPLAY_MATH_ENV);
+        m_settings.setValue("display/math_font", Constants::DEFAULT_MATH_FONT);
+
+        m_settings.setValue("external_processor/command", Constants::DEFAULT_EXTERNAL_PROCESSOR);
+        m_settings.setValue("behavior/auto_copy_result", Constants::DEFAULT_AUTO_COPY_RESULT);
+        m_settings.setValue("behavior/auto_recognize_screenshot", Constants::DEFAULT_AUTO_RECOGNIZE_SCREENSHOT);
+
+        m_settings.setValue("service/auto_start", Constants::DEFAULT_AUTO_START_SERVICE);
+        m_settings.setValue("service/start_command", Constants::DEFAULT_SERVICE_START_COMMAND);
+        m_settings.setValue("service/idle_timeout", Constants::DEFAULT_SERVICE_IDLE_TIMEOUT);
+
+        // 强制写入磁盘
+        m_settings.sync();
+        qDebug() << "Configuration file created at:" << m_settings.fileName();
+    }
+}
+
+// 【新增】提供显式保存接口
+void SettingsManager::sync()
+{
+    m_settings.sync();
 }
 
 QString SettingsManager::serverUrl() const {
