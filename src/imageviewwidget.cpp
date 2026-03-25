@@ -1,5 +1,7 @@
 #include "imageviewwidget.h"
 #include "imageprocessor.h"
+#include "settingsmanager.h" // 【新增】引入设置管理器
+
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QApplication>
@@ -14,9 +16,22 @@
 #include <QTimer>
 #include <QtMath>
 
-ImageViewWidget::ImageViewWidget(QWidget* parent) : QWidget(parent), m_currentMode(FitToView), m_manualZoomMode(false)
+ImageViewWidget::ImageViewWidget(QWidget* parent) : QWidget(parent), m_manualZoomMode(false)
 {
     setupUi();
+
+    // 【修改】从设置加载上次的模式
+    int modeIndex = SettingsManager::instance()->imageViewMode();
+    // 确保值在有效范围内
+    if (modeIndex >= 0 && modeIndex <= 3) {
+        m_currentMode = static_cast<ViewMode>(modeIndex);
+    } else {
+        m_currentMode = FitToView; // 默认值
+    }
+
+    // 【新增】更新按钮的高亮状态
+    updateButtonStyles();
+
     m_view->setAttribute(Qt::WA_TransparentForMouseEvents, true);
     m_view->setInteractive(false);
 }
@@ -43,7 +58,6 @@ void ImageViewWidget::setupUi()
     m_view->setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
     m_view->setBackgroundBrush(QColor("#f0f0f0"));
 
-    // 【修改】优化样式表，增加 QGraphicsView 前缀，并简化代码
     m_view->setStyleSheet(
         "QGraphicsView { border: 1px solid gray; background-color: #f0f0f0; }"
         "QScrollBar:vertical { width: 8px; background: #f0f0f0; margin: 0px; }"
@@ -71,23 +85,13 @@ void ImageViewWidget::setupUi()
     m_fitToHeightBtn = new QPushButton("同高");
     m_originalSizeBtn = new QPushButton("原大", this);
 
-    QString buttonStyle = "QPushButton {"
-    "  background-color: rgba(100, 100, 100, 70);"
-    "  color: white;"
-    "  border: none;"
-    "  border-radius: 3px;"
-    "  padding: 2px;"
-    "}"
-    "QPushButton:hover {"
-    "  background-color: rgba(120, 120, 120, 100);"
-    "}"
-    "QPushButton:pressed {"
-    "  background-color: rgba(80, 80, 80, 130);"
-    "}";
-    m_fitToViewBtn->setStyleSheet(buttonStyle);
-    m_fitToWidthBtn->setStyleSheet(buttonStyle);
-    m_fitToHeightBtn->setStyleSheet(buttonStyle);
-    m_originalSizeBtn->setStyleSheet(buttonStyle);
+    // 这里设置的基础样式会被 updateButtonStyles() 覆盖，但设置大小等属性保留
+    QString buttonBaseStyle = "QPushButton { color: white; border: none; border-radius: 3px; padding: 2px; }";
+
+    m_fitToViewBtn->setStyleSheet(buttonBaseStyle);
+    m_fitToWidthBtn->setStyleSheet(buttonBaseStyle);
+    m_fitToHeightBtn->setStyleSheet(buttonBaseStyle);
+    m_originalSizeBtn->setStyleSheet(buttonBaseStyle);
 
     m_fitToViewBtn->setFixedSize(40, 24);
     m_fitToWidthBtn->setFixedSize(40, 24);
@@ -157,8 +161,17 @@ void ImageViewWidget::clear()
 
 void ImageViewWidget::setViewMode(ViewMode mode)
 {
+    if (m_currentMode == mode && !m_manualZoomMode) return; // 避免重复设置
+
     m_currentMode = mode;
     m_manualZoomMode = false;
+
+    // 【新增】保存设置
+    SettingsManager::instance()->setImageViewMode(static_cast<int>(mode));
+
+    // 【新增】更新按钮高亮
+    updateButtonStyles();
+
     updateView();
 }
 
@@ -198,15 +211,6 @@ void ImageViewWidget::updateView()
         }
         case OriginalSize: {
             // 【修复】适配高 DPI 屏幕
-            // 目标：让图片的一个像素对应屏幕的一个物理像素
-            // 原理：
-            // 1. QPixmap 的尺寸是逻辑尺寸，如果图片 DPR = 1.0，则其逻辑尺寸 = 物理尺寸。
-            // 2. 屏幕有一个 DPR (例如 1.5)。
-            // 3. 如果不缩放，Qt 会把图片的逻辑像素当作屏幕的逻辑像素绘制，
-            //    导致物理尺寸变大 (乘以了屏幕 DPR)。
-            // 4. 我们需要对视图进行缩小，缩放比例 = 图片DPR / 屏幕DPR。
-            //    这样显示出来的逻辑尺寸变小了，但对应的物理像素数正好等于图片原始像素数。
-
             qreal screenDpr = m_view->devicePixelRatioF(); // 获取屏幕 DPR (如 1.5)
             qreal imageDpr = m_originalPixmap.devicePixelRatio(); // 获取图片 DPR (通常为 1.0)
 
@@ -221,6 +225,21 @@ void ImageViewWidget::updateView()
 
     // 将图片居中显示
     m_view->centerOn(m_pixmapItem);
+}
+
+// 【新增】更新按钮高亮样式的辅助函数
+void ImageViewWidget::updateButtonStyles()
+{
+    QString activeStyle = "background-color: rgba(0, 120, 215, 150); color: white; border: none; border-radius: 3px; padding: 2px;";
+    QString inactiveStyle = "background-color: rgba(100, 100, 100, 70); color: white; border: none; border-radius: 3px; padding: 2px;";
+
+    // 安全检查
+    if (!m_fitToViewBtn) return;
+
+    m_fitToViewBtn->setStyleSheet(m_currentMode == FitToView ? activeStyle : inactiveStyle);
+    m_fitToWidthBtn->setStyleSheet(m_currentMode == FitToWidth ? activeStyle : inactiveStyle);
+    m_fitToHeightBtn->setStyleSheet(m_currentMode == FitToHeight ? activeStyle : inactiveStyle);
+    m_originalSizeBtn->setStyleSheet(m_currentMode == OriginalSize ? activeStyle : inactiveStyle);
 }
 
 void ImageViewWidget::showEvent(QShowEvent* event)

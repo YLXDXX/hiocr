@@ -43,6 +43,10 @@ namespace Constants {
     "cache_prompt": false,
     "seed": -1
     })";
+
+
+    // 【新增】默认图片预览模式 (0=整页, 1=同宽, 2=同高, 3=原大)
+    const int DEFAULT_IMAGE_VIEW_MODE = 0;
 }
 
 #endif // CONSTANTS_H

@@ -64,6 +64,10 @@ public:
     QString requestParameters() const;
     void setRequestParameters(const QString& json);
 
+    // 【新增】图片预览模式
+    int imageViewMode() const;
+    void setImageViewMode(int mode);
+
 signals:
     void serverUrlChanged(const QString& url);
     void shortcutsChanged();
@@ -80,6 +84,8 @@ signals:
     void serviceIdleTimeoutChanged(int minutes);
 
     void requestParametersChanged(const QString& json);
+
+    void imageViewModeChanged(int mode);
 
 private:
     explicit SettingsManager(QObject* parent = nullptr);

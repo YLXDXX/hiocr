@@ -73,6 +73,10 @@ void SettingsManager::initializeDefaults()
     if (!m_settings.contains("network/request_parameters")) {
         m_settings.setValue("network/request_parameters", Constants::DEFAULT_REQUEST_PARAMETERS);
     }
+
+    if (!m_settings.contains("display/view_mode")) {
+        m_settings.setValue("display/view_mode", Constants::DEFAULT_IMAGE_VIEW_MODE);
+    }
 }
 
 // 【新增】提供显式保存接口
@@ -234,3 +238,13 @@ void SettingsManager::setServiceIdleTimeout(int minutes) {
     }
 }
 
+int SettingsManager::imageViewMode() const {
+    return m_settings.value("display/view_mode", Constants::DEFAULT_IMAGE_VIEW_MODE).toInt();
+}
+
+void SettingsManager::setImageViewMode(int mode) {
+    if (imageViewMode() != mode) {
+        m_settings.setValue("display/view_mode", mode);
+        emit imageViewModeChanged(mode);
+    }
+}

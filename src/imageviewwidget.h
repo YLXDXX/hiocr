@@ -70,6 +70,8 @@ private:
     QPixmap m_originalPixmap;   // 保留原始图像，用于高质量缩放
     // 移除 m_displayPixmap，直接使用原图配合视图变换
     bool m_manualZoomMode;      // 是否处于手动缩放模式
+
+    void updateButtonStyles();
 };
 
 #endif // IMAGEVIEWWIDGET_H
