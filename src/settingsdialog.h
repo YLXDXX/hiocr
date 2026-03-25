@@ -7,6 +7,8 @@
 #include <QPushButton>
 #include <QComboBox>
 #include <QSpinBox>
+#include <QPlainTextEdit> // 引入多行编辑框
+
 
 class SettingsDialog : public QDialog
 {
@@ -48,6 +50,10 @@ private:
     QCheckBox* m_autoStartServiceCheck;
     QLineEdit* m_serviceStartCommandEdit;
     QSpinBox* m_serviceIdleTimeoutSpin; // 需要包含 QSpinBox
+
+
+    // 【新增】请求参数编辑框
+    QPlainTextEdit* m_requestParamsEdit;
 };
 
 #endif // SETTINGSDIALOG_H

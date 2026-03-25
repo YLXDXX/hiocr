@@ -2,6 +2,8 @@
 #include "settingsmanager.h"
 #include "constants.h"
 
+#include <QJsonDocument>
+#include <QMessageBox>
 #include <QVBoxLayout>
 #include <QFormLayout>
 #include <QGroupBox>
@@ -18,7 +20,7 @@ SettingsDialog::SettingsDialog(QWidget *parent) : QDialog(parent)
 void SettingsDialog::setupUi()
 {
     setWindowTitle("设置");
-    resize(450, 450);
+    resize(450, 550); // 稍微增加高度以容纳新组件
 
     QVBoxLayout* mainLayout = new QVBoxLayout(this);
 
@@ -46,16 +48,13 @@ void SettingsDialog::setupUi()
     QGroupBox* displayGroup = new QGroupBox("显示设置");
     QFormLayout* displayLayout = new QFormLayout(displayGroup);
 
-    // 行间公式环境
     m_displayMathCombo = new QComboBox();
     m_displayMathCombo->addItem("$$ ... $$", "$$");
     m_displayMathCombo->addItem("\\begin{equation} ... \\end{equation}", "equation");
     m_displayMathCombo->addItem("\\begin{align} ... \\end{align}", "align");
     displayLayout->addRow("行间公式环境:", m_displayMathCombo);
 
-    // 【新增】数学字体选择
     m_mathFontCombo = new QComboBox();
-    // 注意：此处 UserData 必须与资源文件名后缀完全一致
     m_mathFontCombo->addItem("Latin Modern", "Latin-Modern");
     m_mathFontCombo->addItem("Asana", "Asana");
     m_mathFontCombo->addItem("STIX Two", "STIX2");
@@ -88,7 +87,24 @@ void SettingsDialog::setupUi()
     externalLayout->addWidget(m_externalProcessorEdit);
     mainLayout->addWidget(externalGroup);
 
+    // --- 【新增】高级参数设置 ---
+    QGroupBox* advancedGroup = new QGroupBox("高级请求参数"); // 修正：添加了右引号
+    QVBoxLayout* advLayout = new QVBoxLayout(advancedGroup);
 
+    QLabel* advHint = new QLabel("直接编辑 JSON 对象，将合并到请求体中。\n支持参数: temperature, max_tokens, top_p 等。");
+    advHint->setStyleSheet("color: gray; font-size: 11px;");
+    advHint->setWordWrap(true);
+
+    m_requestParamsEdit = new QPlainTextEdit();
+    QFont font("monospace");
+    font.setStyleHint(QFont::Monospace);
+    m_requestParamsEdit->setFont(font);
+    m_requestParamsEdit->setPlaceholderText("{\"temperature\": 0.7}");
+
+    advLayout->addWidget(advHint);
+    advLayout->addWidget(m_requestParamsEdit);
+
+    mainLayout->addWidget(advancedGroup);
 
     // --- 服务管理设置 ---
     QGroupBox* serviceGroup = new QGroupBox("服务管理");
@@ -107,13 +123,11 @@ void SettingsDialog::setupUi()
     QHBoxLayout* timeoutLayout = new QHBoxLayout();
     timeoutLayout->addWidget(new QLabel("空闲自动关闭时间(分钟, -1为禁用):"));
     m_serviceIdleTimeoutSpin = new QSpinBox();
-    m_serviceIdleTimeoutSpin->setRange(-1, 9999); // -1 表示禁用
+    m_serviceIdleTimeoutSpin->setRange(-1, 9999);
     timeoutLayout->addWidget(m_serviceIdleTimeoutSpin);
     serviceLayout->addLayout(timeoutLayout);
 
     mainLayout->addWidget(serviceGroup);
-
-
 
     // --- 按钮 ---
     QDialogButtonBox* buttonBox = new QDialogButtonBox(QDialogButtonBox::Save | QDialogButtonBox::RestoreDefaults);
@@ -150,10 +164,23 @@ void SettingsDialog::loadSettings()
     m_autoStartServiceCheck->setChecked(s->autoStartService());
     m_serviceStartCommandEdit->setText(s->serviceStartCommand());
     m_serviceIdleTimeoutSpin->setValue(s->serviceIdleTimeout());
+
+    m_requestParamsEdit->setPlainText(SettingsManager::instance()->requestParameters());
 }
 
 void SettingsDialog::onSaveClicked()
 {
+    // 校验 JSON 格式
+    QString paramsText = m_requestParamsEdit->toPlainText().trimmed();
+    if (!paramsText.isEmpty()) {
+        QJsonParseError err;
+        QJsonDocument::fromJson(paramsText.toUtf8(), &err);
+        if (err.error != QJsonParseError::NoError) {
+            QMessageBox::warning(this, "格式错误", "请求参数不是合法的 JSON 格式:\n" + err.errorString());
+            return; // 阻止保存
+        }
+    }
+
     SettingsManager* s = SettingsManager::instance();
     s->setServerUrl(m_serverUrlEdit->text());
     s->setScreenshotShortcut(m_scScreenshotEdit->text());
@@ -162,17 +189,16 @@ void SettingsDialog::onSaveClicked()
     s->setTableRecognizeShortcut(m_scTableEdit->text());
     s->setAutoUseLastPrompt(m_autoUseLastPromptCheck->isChecked());
     s->setDisplayMathEnvironment(m_displayMathCombo->currentData().toString());
-
-    // 【新增】保存字体设置
     s->setMathFont(m_mathFontCombo->currentData().toString());
-
     s->setExternalProcessorCommand(m_externalProcessorEdit->text());
     s->setAutoRecognizeOnScreenshot(m_autoRecognizeCheck->isChecked());
     s->setAutoCopyResult(m_autoCopyCheck->isChecked());
-
     s->setAutoStartService(m_autoStartServiceCheck->isChecked());
     s->setServiceStartCommand(m_serviceStartCommandEdit->text());
     s->setServiceIdleTimeout(m_serviceIdleTimeoutSpin->value());
+
+    // 保存请求参数
+    s->setRequestParameters(paramsText);
 
     accept();
 }
@@ -198,6 +224,8 @@ void SettingsDialog::onRestoreDefaults()
     m_autoStartServiceCheck->setChecked(Constants::DEFAULT_AUTO_START_SERVICE);
     m_serviceStartCommandEdit->setText(Constants::DEFAULT_SERVICE_START_COMMAND);
     m_serviceIdleTimeoutSpin->setValue(Constants::DEFAULT_SERVICE_IDLE_TIMEOUT);
+
+    m_requestParamsEdit->setPlainText(Constants::DEFAULT_REQUEST_PARAMETERS);
 
     m_externalProcessorEdit->clear();
 }

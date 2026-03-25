@@ -29,6 +29,7 @@ void NetworkManager::setServerUrl(const QString& url) {
     // 但如果需要保留作为本地缓存，也可以保留
 }
 
+
 void NetworkManager::sendRequest(const QString& base64Image,
                                  const QString& prompt,
                                  const QString& serverUrl)
@@ -41,7 +42,7 @@ void NetworkManager::sendRequest(const QString& base64Image,
     // 确定实际使用的 URL：优先使用传入的参数，否则使用成员变量 m_serverUrl
     QString url = serverUrl.isEmpty() ? m_serverUrl : serverUrl;
 
-    // ... 后续代码保持不变 ...
+    // --- 1. 构建消息结构 ---
     QJsonArray messages;
     QJsonObject userMessage;
     QJsonArray content;
@@ -62,14 +63,41 @@ void NetworkManager::sendRequest(const QString& base64Image,
     userMessage["content"] = content;
     messages.append(userMessage);
 
+    // --- 2. 构建 JSON 请求体 ---
     QJsonObject json;
-    json["messages"] = messages;
-    json["stream"] = false;
-    json["cache_prompt"] = false;
-    json["temperature"] = 0.3;
-    json["max_tokens"] = 2048;
-    json["seed"] = -1;
 
+    // 设置基础参数
+    json["messages"] = messages;
+    json["stream"] = false; // 默认不使用流式，稍后会被配置覆盖（但会被强制逻辑改回）
+
+    // --- 3. 从配置中读取并合并参数 ---
+    // 获取用户配置的 JSON 字符串
+    QString paramsJsonStr = SettingsManager::instance()->requestParameters();
+    if (!paramsJsonStr.isEmpty()) {
+        QJsonParseError err;
+        QJsonDocument paramsDoc = QJsonDocument::fromJson(paramsJsonStr.toUtf8(), &err);
+
+        if (err.error == QJsonParseError::NoError && paramsDoc.isObject()) {
+            QJsonObject paramsObj = paramsDoc.object();
+            // 遍历配置中的参数并合并到请求体 json 中
+            // 这会覆盖上面设置的默认值 (如 stream=false，如果用户配置了 stream=true)
+            for (auto it = paramsObj.constBegin(); it != paramsObj.constEnd(); ++it) {
+                json[it.key()] = it.value();
+            }
+        } else {
+            qWarning() << "Failed to parse request parameters JSON, ignoring. Error:" << err.errorString();
+        }
+    }
+
+    // --- 4. 强制安全限制 ---
+    // 无论用户配置如何，当前 NetworkManager 的 onReplyFinished 逻辑不支持流式解析，
+    // 必须强制 stream = false，否则会导致解析错误。
+    if (json.contains("stream") && json["stream"].toBool() == true) {
+        qWarning() << "Stream=true in config is not supported by current NetworkManager logic, forcing to false.";
+        json["stream"] = false;
+    }
+
+    // --- 5. 发送请求 ---
     QJsonDocument doc(json);
     QByteArray data = doc.toJson();
 
@@ -79,6 +107,7 @@ void NetworkManager::sendRequest(const QString& base64Image,
     m_currentReply = m_manager->post(request, data);
     connect(m_currentReply, &QNetworkReply::finished, this, &NetworkManager::onReplyFinished);
 }
+
 
 void NetworkManager::onReplyFinished()
 {

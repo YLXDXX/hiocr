@@ -34,6 +34,15 @@ namespace Constants {
     const bool DEFAULT_AUTO_START_SERVICE = false; // 默认不自动启动，避免干扰在线服务用户
     const QString DEFAULT_SERVICE_START_COMMAND = "";
     const int DEFAULT_SERVICE_IDLE_TIMEOUT = 10; // 默认10分钟
+
+    // 【新增】默认请求参数 (JSON 格式)
+    // 注意：stream 固定为 false，因为当前代码不支持流式解析，这里不配置 stream
+    const QString DEFAULT_REQUEST_PARAMETERS = R"({
+    "temperature": 0.3,
+    "max_tokens": 2048,
+    "cache_prompt": false,
+    "seed": -1
+    })";
 }
 
 #endif // CONSTANTS_H

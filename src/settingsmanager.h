@@ -60,6 +60,10 @@ public:
     int serviceIdleTimeout() const;
     void setServiceIdleTimeout(int minutes);
 
+    // 【新增】请求参数配置
+    QString requestParameters() const;
+    void setRequestParameters(const QString& json);
+
 signals:
     void serverUrlChanged(const QString& url);
     void shortcutsChanged();
@@ -74,6 +78,8 @@ signals:
     void autoStartServiceChanged(bool enabled);
     void serviceStartCommandChanged(const QString& cmd);
     void serviceIdleTimeoutChanged(int minutes);
+
+    void requestParametersChanged(const QString& json);
 
 private:
     explicit SettingsManager(QObject* parent = nullptr);

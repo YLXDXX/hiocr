@@ -19,6 +19,19 @@ SettingsManager::SettingsManager(QObject* parent) : QObject(parent)
 }
 
 
+// 【新增】实现
+QString SettingsManager::requestParameters() const {
+    // 如果用户未设置，返回默认 JSON
+    return m_settings.value("network/request_parameters", Constants::DEFAULT_REQUEST_PARAMETERS).toString();
+}
+
+void SettingsManager::setRequestParameters(const QString& json) {
+    if (requestParameters() != json) {
+        m_settings.setValue("network/request_parameters", json);
+        emit requestParametersChanged(json);
+    }
+}
+
 // 【新增】检查并初始化默认配置文件
 void SettingsManager::initializeDefaults()
 {
@@ -54,6 +67,11 @@ void SettingsManager::initializeDefaults()
         // 强制写入磁盘
         m_settings.sync();
         qDebug() << "Configuration file created at:" << m_settings.fileName();
+    }
+
+    // 【新增】
+    if (!m_settings.contains("network/request_parameters")) {
+        m_settings.setValue("network/request_parameters", Constants::DEFAULT_REQUEST_PARAMETERS);
     }
 }
 
