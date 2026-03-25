@@ -29,6 +29,11 @@ namespace Constants {
 
     const bool DEFAULT_AUTO_COPY_RESULT = true;
     const bool DEFAULT_AUTO_RECOGNIZE_SCREENSHOT = true;
+
+    // --- 服务管理设置 ---
+    const bool DEFAULT_AUTO_START_SERVICE = false; // 默认不自动启动，避免干扰在线服务用户
+    const QString DEFAULT_SERVICE_START_COMMAND = "";
+    const int DEFAULT_SERVICE_IDLE_TIMEOUT = 10; // 默认10分钟
 }
 
 #endif // CONSTANTS_H

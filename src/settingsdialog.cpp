@@ -7,6 +7,7 @@
 #include <QGroupBox>
 #include <QDialogButtonBox>
 #include <QLabel>
+#include <QSpinBox>
 
 SettingsDialog::SettingsDialog(QWidget *parent) : QDialog(parent)
 {
@@ -87,6 +88,33 @@ void SettingsDialog::setupUi()
     externalLayout->addWidget(m_externalProcessorEdit);
     mainLayout->addWidget(externalGroup);
 
+
+
+    // --- 服务管理设置 ---
+    QGroupBox* serviceGroup = new QGroupBox("服务管理");
+    QVBoxLayout* serviceLayout = new QVBoxLayout(serviceGroup);
+
+    m_autoStartServiceCheck = new QCheckBox("自动启动本地识别服务");
+    serviceLayout->addWidget(m_autoStartServiceCheck);
+
+    QHBoxLayout* cmdLayout = new QHBoxLayout();
+    cmdLayout->addWidget(new QLabel("启动命令:"));
+    m_serviceStartCommandEdit = new QLineEdit();
+    m_serviceStartCommandEdit->setPlaceholderText("例如: python server.py --port 8080");
+    cmdLayout->addWidget(m_serviceStartCommandEdit);
+    serviceLayout->addLayout(cmdLayout);
+
+    QHBoxLayout* timeoutLayout = new QHBoxLayout();
+    timeoutLayout->addWidget(new QLabel("空闲自动关闭时间(分钟, -1为禁用):"));
+    m_serviceIdleTimeoutSpin = new QSpinBox();
+    m_serviceIdleTimeoutSpin->setRange(-1, 9999); // -1 表示禁用
+    timeoutLayout->addWidget(m_serviceIdleTimeoutSpin);
+    serviceLayout->addLayout(timeoutLayout);
+
+    mainLayout->addWidget(serviceGroup);
+
+
+
     // --- 按钮 ---
     QDialogButtonBox* buttonBox = new QDialogButtonBox(QDialogButtonBox::Save | QDialogButtonBox::RestoreDefaults);
     connect(buttonBox, &QDialogButtonBox::accepted, this, &SettingsDialog::onSaveClicked);
@@ -118,6 +146,10 @@ void SettingsDialog::loadSettings()
     m_externalProcessorEdit->setText(s->externalProcessorCommand());
     m_autoRecognizeCheck->setChecked(s->autoRecognizeOnScreenshot());
     m_autoCopyCheck->setChecked(s->autoCopyResult());
+
+    m_autoStartServiceCheck->setChecked(s->autoStartService());
+    m_serviceStartCommandEdit->setText(s->serviceStartCommand());
+    m_serviceIdleTimeoutSpin->setValue(s->serviceIdleTimeout());
 }
 
 void SettingsDialog::onSaveClicked()
@@ -137,6 +169,10 @@ void SettingsDialog::onSaveClicked()
     s->setExternalProcessorCommand(m_externalProcessorEdit->text());
     s->setAutoRecognizeOnScreenshot(m_autoRecognizeCheck->isChecked());
     s->setAutoCopyResult(m_autoCopyCheck->isChecked());
+
+    s->setAutoStartService(m_autoStartServiceCheck->isChecked());
+    s->setServiceStartCommand(m_serviceStartCommandEdit->text());
+    s->setServiceIdleTimeout(m_serviceIdleTimeoutSpin->value());
 
     accept();
 }
@@ -158,6 +194,10 @@ void SettingsDialog::onRestoreDefaults()
     // 【新增】恢复默认字体
     int fontIndex = m_mathFontCombo->findData(Constants::DEFAULT_MATH_FONT);
     if (fontIndex != -1) m_mathFontCombo->setCurrentIndex(fontIndex);
+
+    m_autoStartServiceCheck->setChecked(Constants::DEFAULT_AUTO_START_SERVICE);
+    m_serviceStartCommandEdit->setText(Constants::DEFAULT_SERVICE_START_COMMAND);
+    m_serviceIdleTimeoutSpin->setValue(Constants::DEFAULT_SERVICE_IDLE_TIMEOUT);
 
     m_externalProcessorEdit->clear();
 }

@@ -47,6 +47,16 @@ public:
     bool autoRecognizeOnScreenshot() const;
     void setAutoRecognizeOnScreenshot(bool enabled);
 
+    // 服务管理设置
+    bool autoStartService() const;
+    void setAutoStartService(bool enabled);
+
+    QString serviceStartCommand() const;
+    void setServiceStartCommand(const QString& cmd);
+
+    int serviceIdleTimeout() const;
+    void setServiceIdleTimeout(int minutes);
+
 signals:
     void serverUrlChanged(const QString& url);
     void shortcutsChanged();
@@ -57,6 +67,10 @@ signals:
 
     void autoCopyResultChanged(bool enabled);
     void autoRecognizeOnScreenshotChanged(bool enabled);
+
+    void autoStartServiceChanged(bool enabled);
+    void serviceStartCommandChanged(const QString& cmd);
+    void serviceIdleTimeoutChanged(int minutes);
 
 private:
     explicit SettingsManager(QObject* parent = nullptr);

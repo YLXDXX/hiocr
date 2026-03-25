@@ -132,3 +132,36 @@ void SettingsManager::setAutoRecognizeOnScreenshot(bool enabled) {
 }
 
 
+bool SettingsManager::autoStartService() const {
+    return m_settings.value("service/auto_start", Constants::DEFAULT_AUTO_START_SERVICE).toBool();
+}
+
+void SettingsManager::setAutoStartService(bool enabled) {
+    if (autoStartService() != enabled) {
+        m_settings.setValue("service/auto_start", enabled);
+        emit autoStartServiceChanged(enabled);
+    }
+}
+
+QString SettingsManager::serviceStartCommand() const {
+    return m_settings.value("service/start_command", Constants::DEFAULT_SERVICE_START_COMMAND).toString();
+}
+
+void SettingsManager::setServiceStartCommand(const QString& cmd) {
+    if (serviceStartCommand() != cmd) {
+        m_settings.setValue("service/start_command", cmd);
+        emit serviceStartCommandChanged(cmd);
+    }
+}
+
+int SettingsManager::serviceIdleTimeout() const {
+    return m_settings.value("service/idle_timeout", Constants::DEFAULT_SERVICE_IDLE_TIMEOUT).toInt();
+}
+
+void SettingsManager::setServiceIdleTimeout(int minutes) {
+    if (serviceIdleTimeout() != minutes) {
+        m_settings.setValue("service/idle_timeout", minutes);
+        emit serviceIdleTimeoutChanged(minutes);
+    }
+}
+

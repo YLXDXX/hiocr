@@ -6,6 +6,7 @@
 #include <QCheckBox>
 #include <QPushButton>
 #include <QComboBox>
+#include <QSpinBox>
 
 class SettingsDialog : public QDialog
 {
@@ -43,6 +44,10 @@ private:
 
     QCheckBox* m_autoCopyCheck;
     QCheckBox* m_autoRecognizeCheck;
+
+    QCheckBox* m_autoStartServiceCheck;
+    QLineEdit* m_serviceStartCommandEdit;
+    QSpinBox* m_serviceIdleTimeoutSpin; // 需要包含 QSpinBox
 };
 
 #endif // SETTINGSDIALOG_H

@@ -1,5 +1,6 @@
 #ifndef APPCONTROLLER_H
 #define APPCONTROLLER_H
+#include "servicemanager.h"
 
 #include <QObject>
 #include <QImage>
@@ -69,6 +70,12 @@ private:
     // 临时状态
     QImage m_pendingFullScreenshot; // 等待选区的全屏截图
     QString m_pendingPromptOverride; // 选区完成后要使用的提示词
+
+    ServiceManager* m_serviceManager = nullptr;
+
+    // 用于暂存识别请求（当服务正在启动时）
+    QString m_pendingPrompt;
+    QString m_pendingBase64;
 };
 
 #endif // APPCONTROLLER_H

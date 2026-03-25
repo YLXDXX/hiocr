@@ -35,6 +35,7 @@ set(APP_SOURCES
     shortcuthandler.cpp
     settingsdialog.cpp
     markdowncopybar.cpp
+    servicemanager.cpp
 )
 
 set(APP_HEADERS
@@ -52,6 +53,7 @@ set(APP_HEADERS
     settingsdialog.h
     constants.h
     markdowncopybar.h
+    servicemanager.h
 )
 
 # 如果 KF6GlobalAccel 可用，则添加 KGlobalAccel 支持

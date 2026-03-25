@@ -55,6 +55,8 @@ void AppController::setupManagers()
 
     // 4. 快捷键处理器
     m_shortcutHandler = new ShortcutHandler(this);
+
+    m_serviceManager = new ServiceManager(this); // 新增
 }
 
 void AppController::setupConnections()
@@ -77,7 +79,15 @@ void AppController::setupConnections()
 
     // 连接识别请求
     connect(m_mainWindow, &MainWindow::recognizeRequested, this, [this](const QString& prompt, const QString& base64Img){
-        m_recognitionManager->recognize(prompt, base64Img);
+        // 1. 暂存请求参数
+        m_pendingPrompt = prompt;
+        m_pendingBase64 = base64Img;
+
+        // 2. 尝试确保服务运行
+        // ensureRunning 会检查是否正在运行或已启动
+        // 如果一切正常，它会立即发出 serviceReady
+        // 如果正在启动，稍后会发出 serviceReady
+        m_serviceManager->ensureRunning();
     });
 
     connect(m_mainWindow, &MainWindow::imagePasted, this, [this](const QImage& img){
@@ -96,7 +106,22 @@ void AppController::setupConnections()
     // --- RecognitionManager -> Controller ---
     // 【修改】连接到新的槽函数 onRecognitionFinished，以便处理自动复制逻辑
     connect(m_recognitionManager, &RecognitionManager::recognitionFinished, this, &AppController::onRecognitionFinished);
-    connect(m_recognitionManager, &RecognitionManager::recognitionFailed, this, &AppController::recognitionFailed);
+    connect(m_recognitionManager, &RecognitionManager::recognitionFailed, this, [this](const QString& error){
+        // 检测错误类型：如果是连接被拒绝，且服务未运行，则尝试启动并重试
+        // (这里简单的字符串匹配，实际项目中可用错误码)
+        if (error.contains("Connection refused") || error.contains("连接被拒绝")) {
+            if (SettingsManager::instance()->autoStartService()) {
+                // 尝试重新启动服务并重试
+                // 注意：需要防止无限循环（启动失败 -> 报错 -> 重试 -> 失败）
+                // 这里可以通过状态标志位控制
+                qDebug() << "Service connection failed, attempting restart...";
+                // 此时 m_pendingPrompt 和 m_pendingBase64 应该还有值（因为刚刚请求过）
+                m_serviceManager->ensureRunning();
+                return; // 不直接显示错误，等待服务启动后的重试
+            }
+        }
+        emit recognitionFailed(error);
+    });
     connect(m_recognitionManager, &RecognitionManager::busyStateChanged, this, &AppController::busyStateChanged);
 
     // --- Controller -> MainWindow (更新 UI) ---
@@ -118,6 +143,30 @@ void AppController::setupConnections()
     connect(m_mainWindow, &MainWindow::settingsTriggered, this, [this](){
         SettingsDialog dialog(m_mainWindow);
         dialog.exec(); // 模态运行
+    });
+
+    // 【新增】连接服务管理器信号
+    connect(m_serviceManager, &ServiceManager::serviceReady, this, [this](){
+        // 服务就绪，检查是否有暂存的请求
+        if (!m_pendingBase64.isEmpty() && !m_pendingPrompt.isEmpty()) {
+            m_recognitionManager->recognize(m_pendingPrompt, m_pendingBase64);
+            m_pendingBase64.clear();
+            m_pendingPrompt.clear();
+        }
+    });
+
+    connect(m_serviceManager, &ServiceManager::errorOccurred, this, [this](const QString& error){
+        // 服务启动失败或运行出错
+        emit recognitionFailed("服务启动失败: " + error);
+    });
+
+    // 【修改】识别完成后的逻辑：重置空闲计时器，并可能进行自动复制
+    connect(m_recognitionManager, &RecognitionManager::recognitionFinished, this, [this](const QString& markdown){
+        // 重置服务空闲计时器
+        m_serviceManager->resetIdleTimer();
+
+        // 执行原有的自动复制逻辑
+        onRecognitionFinished(markdown);
     });
 }
 
