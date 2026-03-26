@@ -4,6 +4,7 @@
 #include <QSocketNotifier>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QFileInfo>
 #include "appcontroller.h"
 #include "mainwindow.h"
 
@@ -22,9 +23,18 @@ void intSignalHandler(int)
     ::write(sigintFd[0], &a, sizeof(a));
 }
 
-// 尝试连接已运行的实例并发送参数
-bool trySendToExistingInstance(const QString& imagePath, const QString& resultText)
+// 发送参数前，先处理路径格式
+bool trySendToExistingInstance(QString imagePath, const QString& resultText)
 {
+    // 【关键修复】如果是相对路径，转换为绝对路径
+    // 因为主实例的工作目录可能与当前进程不同
+    if (!imagePath.isEmpty()) {
+        QFileInfo fileInfo(imagePath);
+        if (fileInfo.isRelative()) {
+            imagePath = fileInfo.absoluteFilePath();
+        }
+    }
+
     QLocalSocket socket;
     socket.connectToServer(SINGLE_INSTANCE_KEY, QIODevice::WriteOnly);
 
@@ -45,6 +55,7 @@ bool trySendToExistingInstance(const QString& imagePath, const QString& resultTe
 
     return false;
 }
+
 
 int main(int argc, char *argv[])
 {
@@ -102,6 +113,13 @@ int main(int argc, char *argv[])
     }
 
     // 3. 继续主程序启动逻辑
+    if (!imagePath.isEmpty()) {
+        QFileInfo fileInfo(imagePath);
+        if (fileInfo.isRelative()) {
+            imagePath = fileInfo.absoluteFilePath();
+        }
+    }
+
     if (::socketpair(AF_UNIX, SOCK_STREAM, 0, sigintFd) == 0) {
         struct sigaction sa;
         sa.sa_handler = intSignalHandler;
