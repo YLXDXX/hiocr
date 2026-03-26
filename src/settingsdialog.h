@@ -61,6 +61,8 @@ private:
     QLineEdit* m_formulaPromptEdit;
     QLineEdit* m_tablePromptEdit;
 
+    QCheckBox* m_autoExternalProcessCheck;
+
 };
 
 #endif // SETTINGSDIALOG_H

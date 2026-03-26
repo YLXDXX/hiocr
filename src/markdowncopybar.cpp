@@ -19,34 +19,46 @@ void MarkdownCopyBar::setupUi()
 {
     QHBoxLayout* layout = new QHBoxLayout(this);
     layout->setContentsMargins(0, 2, 0, 2);
+    layout->setSpacing(4); // 控件间距，与 PromptBar 保持一致
 
+    // 1. 标签固定在最左侧
     layout->addWidget(new QLabel("复制选项:", this));
 
-    m_btnOriginal = new QPushButton("原样复制", this);
-    m_btnInline = new QPushButton("行内公式", this);
-    m_btnDisplay = new QPushButton("行间公式", this);
+    // 2. 创建按钮
+    m_btnOriginal = new QPushButton("内容", this);
+    m_btnInline = new QPushButton("行内", this);
+    m_btnDisplay = new QPushButton("行间", this);
 
+    // 3. 设置按钮宽度
+    // 文字为2个汉字，约等于30-40px。
+    // 设置为 60px 可以确保按钮比文字宽，方便点击，且视觉上统一
+    int btnWidth = 60;
+    m_btnOriginal->setFixedWidth(btnWidth);
+    m_btnInline->setFixedWidth(btnWidth);
+    m_btnDisplay->setFixedWidth(btnWidth);
+
+    // 连接信号槽
     connect(m_btnOriginal, &QPushButton::clicked, this, &MarkdownCopyBar::onCopyOriginal);
     connect(m_btnInline, &QPushButton::clicked, this, &MarkdownCopyBar::onCopyInline);
     connect(m_btnDisplay, &QPushButton::clicked, this, &MarkdownCopyBar::onCopyDisplay);
 
+    // 4. 添加按钮到布局
     layout->addWidget(m_btnOriginal);
     layout->addWidget(m_btnInline);
     layout->addWidget(m_btnDisplay);
+
+    // 5. 添加弹簧，将左侧内容和按钮推向左边，右侧留空
     layout->addStretch();
 }
 
-// 【新增】实现设置编辑器指针
 void MarkdownCopyBar::setSourceEditor(QPlainTextEdit* editor)
 {
     m_sourceEdit = editor;
     if (m_sourceEdit) {
-        // 连接文本变化信号，实时更新按钮状态
         connect(m_sourceEdit, &QPlainTextEdit::textChanged, this, &MarkdownCopyBar::onSourceTextChanged);
     }
 }
 
-// 【新增】文本变化时自动判断类型
 void MarkdownCopyBar::onSourceTextChanged()
 {
     if (!m_sourceEdit) return;
@@ -64,7 +76,6 @@ void MarkdownCopyBar::updateButtonState(const QString& content)
     if (isDisplayMath || isInlineMath)
     {
         m_currentType = SingleFormula;
-        // 如果包含多个公式块或双换行，则视为混合
         if (trimmed.contains("\n\n") || trimmed.count("$$") > 2)
         {
             m_currentType = MixedContent;
@@ -75,7 +86,6 @@ void MarkdownCopyBar::updateButtonState(const QString& content)
         m_currentType = MixedContent;
     }
 
-    // 更新 UI
     if (m_currentType == SingleFormula)
     {
         m_btnInline->setEnabled(true);
@@ -90,15 +100,82 @@ void MarkdownCopyBar::updateButtonState(const QString& content)
     }
 }
 
+// 【新增】核心复制逻辑，处理外部程序调用
+void MarkdownCopyBar::executeCopy(const QString& text)
+{
+    // 检查是否需要自动调用外部程序
+    if (SettingsManager::instance()->autoExternalProcessBeforeCopy()) {
+        QString command = SettingsManager::instance()->externalProcessorCommand();
+
+        if (!command.isEmpty()) {
+            qDebug() << "Auto external process triggered for copy.";
+
+            // 禁用按钮防止重复点击
+            m_btnOriginal->setEnabled(false);
+            m_btnInline->setEnabled(false);
+            m_btnDisplay->setEnabled(false);
+
+            if (!m_externalProcess) {
+                m_externalProcess = new QProcess(this);
+                connect(m_externalProcess, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+                        this, &MarkdownCopyBar::onExternalProcessFinished);
+            }
+
+            m_externalProcess->startCommand(command);
+            m_externalProcess->write(text.toUtf8());
+            m_externalProcess->closeWriteChannel();
+            return; // 异步等待，不直接复制
+        }
+    }
+
+    // 直接复制
+    QApplication::clipboard()->setText(text, QClipboard::Clipboard);
+    qDebug() << "Copied directly:" << text.left(20);
+}
+
+// 【新增】外部程序处理完成回调
+void MarkdownCopyBar::onExternalProcessFinished(int exitCode, QProcess::ExitStatus exitStatus)
+{
+    // 恢复按钮状态
+    m_btnOriginal->setEnabled(true);
+    m_btnInline->setEnabled(true);
+    // m_btnDisplay 的状态需要根据当前类型重新计算，这里简单起见直接启用
+    m_btnDisplay->setEnabled(true);
+
+    if (exitStatus == QProcess::NormalExit && exitCode == 0) {
+        QString result = QString::fromUtf8(m_externalProcess->readAllStandardOutput());
+        QApplication::clipboard()->setText(result, QClipboard::Clipboard);
+        qDebug() << "Copied after external process:" << result.left(20);
+    } else {
+        QString error = m_externalProcess->readAllStandardError();
+        qWarning() << "External process failed:" << error;
+        // 即使失败，也将原始内容复制（可选行为，这里选择提示用户）
+        // QApplication::clipboard()->setText(m_sourceEdit->toPlainText());
+    }
+}
+
 void MarkdownCopyBar::onCopyOriginal()
 {
     if (!m_sourceEdit) return;
-    QString content = m_sourceEdit->toPlainText();
+    QString content = m_sourceEdit->toPlainText().trimmed();
+    QString finalText;
 
-    QClipboard* cb = QApplication::clipboard();
-    cb->setText(content, QClipboard::Clipboard);
+    // 【修改】需求2：仅复制纯公式内容
+    if (m_currentType == SingleFormula) {
+        // 去除所有可能的环境包裹
+        if (content.startsWith("$$") && content.endsWith("$$")) {
+            finalText = content.mid(2, content.length() - 4).trimmed();
+        } else if (content.startsWith("$") && content.endsWith("$")) {
+            finalText = content.mid(1, content.length() - 2).trimmed();
+        } else {
+            finalText = content;
+        }
+    } else {
+        // 混合内容保持原样
+        finalText = content;
+    }
 
-    qDebug() << "Copied Original:" << content.left(20);
+    executeCopy(finalText);
 }
 
 void MarkdownCopyBar::onCopyInline()
@@ -108,21 +185,17 @@ void MarkdownCopyBar::onCopyInline()
 
     if (m_currentType != SingleFormula) return;
 
-    // 去除外层
-    if (content.startsWith("$$") && content.endsWith("$$"))
-    {
-        content = content.mid(2, content.length() - 4).trimmed();
-    }
-    else if (content.startsWith("$") && content.endsWith("$"))
-    {
-        content = content.mid(1, content.length() - 2).trimmed();
+    QString core;
+    if (content.startsWith("$$") && content.endsWith("$$")) {
+        core = content.mid(2, content.length() - 4).trimmed();
+    } else if (content.startsWith("$") && content.endsWith("$")) {
+        core = content.mid(1, content.length() - 2).trimmed();
+    } else {
+        core = content;
     }
 
-    QString finalText = "$" + content + "$";
-
-    QClipboard* cb = QApplication::clipboard();
-    cb->setText(finalText, QClipboard::Clipboard);
-    qDebug() << "Copied Inline:" << finalText;
+    QString finalText = "$" + core + "$";
+    executeCopy(finalText);
 }
 
 void MarkdownCopyBar::onCopyDisplay()
@@ -132,7 +205,6 @@ void MarkdownCopyBar::onCopyDisplay()
     QString finalText;
     QString env = SettingsManager::instance()->displayMathEnvironment();
 
-    // 辅助函数：提取核心内容
     auto extractContent = [](const QString& raw) -> QString {
         QString t = raw.trimmed();
         if (t.startsWith("$$") && t.endsWith("$$")) return t.mid(2, t.length() - 4).trimmed();
@@ -181,7 +253,5 @@ void MarkdownCopyBar::onCopyDisplay()
         finalText = resultText;
     }
 
-    QClipboard* cb = QApplication::clipboard();
-    cb->setText(finalText, QClipboard::Clipboard);
-    qDebug() << "Copied Display:" << finalText.left(50);
+    executeCopy(finalText);
 }

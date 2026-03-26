@@ -109,6 +109,9 @@ void SettingsDialog::setupUi()
     behaviorLayout->addWidget(m_autoRecognizeCheck);
     m_autoCopyCheck = new QCheckBox("识别完成后自动复制结果");
     behaviorLayout->addWidget(m_autoCopyCheck);
+    m_autoExternalProcessCheck = new QCheckBox("复制前自动调用外部程序处理");
+    m_autoExternalProcessCheck->setToolTip("开启后，点击复制按钮时将自动运行外部程序处理文本后再复制。");
+    behaviorLayout->addWidget(m_autoExternalProcessCheck);
     mainLayout->addWidget(behaviorGroup);
 
     // --- 外部程序设置 ---
@@ -231,6 +234,8 @@ void SettingsDialog::loadSettings()
     m_textPromptEdit->setText(s->textPrompt());
     m_formulaPromptEdit->setText(s->formulaPrompt());
     m_tablePromptEdit->setText(s->tablePrompt());
+
+    m_autoExternalProcessCheck->setChecked(s->autoExternalProcessBeforeCopy());
 }
 
 void SettingsDialog::onSaveClicked()
@@ -270,6 +275,8 @@ void SettingsDialog::onSaveClicked()
     s->setFormulaPrompt(m_formulaPromptEdit->text());
     s->setTablePrompt(m_tablePromptEdit->text());
 
+    s->setAutoExternalProcessBeforeCopy(m_autoExternalProcessCheck->isChecked());
+
     accept();
 }
 
@@ -300,6 +307,8 @@ void SettingsDialog::onRestoreDefaults()
     m_textPromptEdit->setText(Constants::PROMPT_TEXT);
     m_formulaPromptEdit->setText(Constants::PROMPT_FORMULA);
     m_tablePromptEdit->setText(Constants::PROMPT_TABLE);
+
+    m_autoExternalProcessCheck->setChecked(false); // 默认关闭
 
     m_externalProcessorEdit->clear();
 }

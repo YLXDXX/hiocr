@@ -88,6 +88,10 @@ void SettingsManager::initializeDefaults()
     if (!m_settings.contains("prompts/table")) {
         m_settings.setValue("prompts/table", Constants::PROMPT_TABLE);
     }
+
+    if (!m_settings.contains("behavior/auto_external_process_before_copy")) {
+        m_settings.setValue("behavior/auto_external_process_before_copy", false); // 默认关闭
+    }
 }
 
 // 【新增】提供显式保存接口
@@ -295,3 +299,14 @@ void SettingsManager::setTablePrompt(const QString& prompt) {
     }
 }
 
+
+bool SettingsManager::autoExternalProcessBeforeCopy() const {
+    return m_settings.value("behavior/auto_external_process_before_copy", false).toBool();
+}
+
+void SettingsManager::setAutoExternalProcessBeforeCopy(bool enabled) {
+    if (autoExternalProcessBeforeCopy() != enabled) {
+        m_settings.setValue("behavior/auto_external_process_before_copy", enabled);
+        emit autoExternalProcessBeforeCopyChanged(enabled);
+    }
+}

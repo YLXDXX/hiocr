@@ -78,6 +78,11 @@ public:
     void setFormulaPrompt(const QString& prompt);
     void setTablePrompt(const QString& prompt);
 
+
+    // 【新增】复制前自动调用外部程序设置
+    bool autoExternalProcessBeforeCopy() const;
+    void setAutoExternalProcessBeforeCopy(bool enabled);
+
 signals:
     void serverUrlChanged(const QString& url);
     void shortcutsChanged();
@@ -100,6 +105,8 @@ signals:
     void textPromptChanged(const QString& prompt);
     void formulaPromptChanged(const QString& prompt);
     void tablePromptChanged(const QString& prompt);
+
+    void autoExternalProcessBeforeCopyChanged(bool enabled);
 
 private:
     explicit SettingsManager(QObject* parent = nullptr);
