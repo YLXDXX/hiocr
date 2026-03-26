@@ -68,6 +68,16 @@ public:
     int imageViewMode() const;
     void setImageViewMode(int mode);
 
+
+    // 提示词设置
+    QString textPrompt() const;
+    QString formulaPrompt() const;
+    QString tablePrompt() const;
+
+    void setTextPrompt(const QString& prompt);
+    void setFormulaPrompt(const QString& prompt);
+    void setTablePrompt(const QString& prompt);
+
 signals:
     void serverUrlChanged(const QString& url);
     void shortcutsChanged();
@@ -86,6 +96,10 @@ signals:
     void requestParametersChanged(const QString& json);
 
     void imageViewModeChanged(int mode);
+
+    void textPromptChanged(const QString& prompt);
+    void formulaPromptChanged(const QString& prompt);
+    void tablePromptChanged(const QString& prompt);
 
 private:
     explicit SettingsManager(QObject* parent = nullptr);

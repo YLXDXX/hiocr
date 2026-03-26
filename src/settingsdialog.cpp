@@ -52,6 +52,20 @@ void SettingsDialog::setupUi()
     serverLayout->addRow("服务器地址:", m_serverUrlEdit);
     mainLayout->addWidget(serverGroup);
 
+    // --- 提示词设置 ---
+    QGroupBox* promptGroup = new QGroupBox("提示词设置");
+    QFormLayout* promptLayout = new QFormLayout(promptGroup);
+
+    m_textPromptEdit = new QLineEdit();
+    m_formulaPromptEdit = new QLineEdit();
+    m_tablePromptEdit = new QLineEdit();
+
+    promptLayout->addRow("文字识别:", m_textPromptEdit);
+    promptLayout->addRow("公式识别:", m_formulaPromptEdit);
+    promptLayout->addRow("表格识别:", m_tablePromptEdit);
+
+    mainLayout->addWidget(promptGroup);
+
     // --- 快捷键设置 ---
     QGroupBox* shortcutGroup = new QGroupBox("快捷键设置");
     QFormLayout* shortcutLayout = new QFormLayout(shortcutGroup);
@@ -212,6 +226,11 @@ void SettingsDialog::loadSettings()
     m_serviceIdleTimeoutSpin->setValue(s->serviceIdleTimeout());
 
     m_requestParamsEdit->setPlainText(SettingsManager::instance()->requestParameters());
+
+    // 加载提示词设置
+    m_textPromptEdit->setText(s->textPrompt());
+    m_formulaPromptEdit->setText(s->formulaPrompt());
+    m_tablePromptEdit->setText(s->tablePrompt());
 }
 
 void SettingsDialog::onSaveClicked()
@@ -246,6 +265,11 @@ void SettingsDialog::onSaveClicked()
     // 保存请求参数
     s->setRequestParameters(paramsText);
 
+    // 保存提示词设置
+    s->setTextPrompt(m_textPromptEdit->text());
+    s->setFormulaPrompt(m_formulaPromptEdit->text());
+    s->setTablePrompt(m_tablePromptEdit->text());
+
     accept();
 }
 
@@ -272,6 +296,10 @@ void SettingsDialog::onRestoreDefaults()
     m_serviceIdleTimeoutSpin->setValue(Constants::DEFAULT_SERVICE_IDLE_TIMEOUT);
 
     m_requestParamsEdit->setPlainText(Constants::DEFAULT_REQUEST_PARAMETERS);
+
+    m_textPromptEdit->setText(Constants::PROMPT_TEXT);
+    m_formulaPromptEdit->setText(Constants::PROMPT_FORMULA);
+    m_tablePromptEdit->setText(Constants::PROMPT_TABLE);
 
     m_externalProcessorEdit->clear();
 }

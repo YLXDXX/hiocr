@@ -1,5 +1,5 @@
 #include "promptbar.h"
-#include "constants.h" // 新增
+#include "settingsmanager.h"
 
 #include <QHBoxLayout>
 #include <QLabel>
@@ -77,18 +77,21 @@ void PromptBar::setButtonsBusy(bool busy)
 
 void PromptBar::onTextButton()
 {
-    setPrompt(Constants::PROMPT_TEXT);
-    emit autoRecognizeRequested(Constants::PROMPT_TEXT);
+    QString prompt = SettingsManager::instance()->textPrompt();
+    setPrompt(prompt);
+    emit autoRecognizeRequested(prompt);
 }
 
 void PromptBar::onFormulaButton()
 {
-    setPrompt(Constants::PROMPT_FORMULA);
-    emit autoRecognizeRequested(Constants::PROMPT_FORMULA);
+    QString prompt = SettingsManager::instance()->formulaPrompt();
+    setPrompt(prompt);
+    emit autoRecognizeRequested(prompt);
 }
 
 void PromptBar::onTableButton()
 {
-    setPrompt(Constants::PROMPT_TABLE);
-    emit autoRecognizeRequested(Constants::PROMPT_TABLE);
+    QString prompt = SettingsManager::instance()->tablePrompt();
+    setPrompt(prompt);
+    emit autoRecognizeRequested(prompt);
 }

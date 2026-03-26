@@ -6,8 +6,7 @@
 #include "traymanager.h"
 #include "shortcuthandler.h"
 #include "imageprocessor.h"
-#include "settingsdialog.h" // 新增
-#include "constants.h"      // 新增
+#include "settingsdialog.h"
 
 #include <QApplication>
 #include <QTimer>
@@ -190,21 +189,21 @@ void AppController::takeScreenshot() {
 }
 
 void AppController::takeTextRecognizeScreenshot() {
-    QString prompt = Constants::PROMPT_TEXT;
+    QString prompt = SettingsManager::instance()->textPrompt();
     m_pendingPromptOverride = prompt;
     m_mainWindow->setPrompt(prompt);
     m_screenshotManager->takeScreenshot();
 }
 
 void AppController::takeFormulaRecognizeScreenshot() {
-    QString prompt = Constants::PROMPT_FORMULA;
+    QString prompt = SettingsManager::instance()->formulaPrompt();
     m_pendingPromptOverride = prompt;
     m_mainWindow->setPrompt(prompt);
     m_screenshotManager->takeScreenshot();
 }
 
 void AppController::takeTableRecognizeScreenshot() {
-    QString prompt = Constants::PROMPT_TABLE;
+    QString prompt = SettingsManager::instance()->tablePrompt();
     m_pendingPromptOverride = prompt;
     m_mainWindow->setPrompt(prompt);
     m_screenshotManager->takeScreenshot();

@@ -77,6 +77,17 @@ void SettingsManager::initializeDefaults()
     if (!m_settings.contains("display/view_mode")) {
         m_settings.setValue("display/view_mode", Constants::DEFAULT_IMAGE_VIEW_MODE);
     }
+
+    // 【新增】提示词默认值
+    if (!m_settings.contains("prompts/text")) {
+        m_settings.setValue("prompts/text", Constants::PROMPT_TEXT);
+    }
+    if (!m_settings.contains("prompts/formula")) {
+        m_settings.setValue("prompts/formula", Constants::PROMPT_FORMULA);
+    }
+    if (!m_settings.contains("prompts/table")) {
+        m_settings.setValue("prompts/table", Constants::PROMPT_TABLE);
+    }
 }
 
 // 【新增】提供显式保存接口
@@ -248,3 +259,39 @@ void SettingsManager::setImageViewMode(int mode) {
         emit imageViewModeChanged(mode);
     }
 }
+
+
+
+QString SettingsManager::textPrompt() const {
+    return m_settings.value("prompts/text", Constants::PROMPT_TEXT).toString();
+}
+
+void SettingsManager::setTextPrompt(const QString& prompt) {
+    if (textPrompt() != prompt) {
+        m_settings.setValue("prompts/text", prompt);
+        emit textPromptChanged(prompt);
+    }
+}
+
+QString SettingsManager::formulaPrompt() const {
+    return m_settings.value("prompts/formula", Constants::PROMPT_FORMULA).toString();
+}
+
+void SettingsManager::setFormulaPrompt(const QString& prompt) {
+    if (formulaPrompt() != prompt) {
+        m_settings.setValue("prompts/formula", prompt);
+        emit formulaPromptChanged(prompt);
+    }
+}
+
+QString SettingsManager::tablePrompt() const {
+    return m_settings.value("prompts/table", Constants::PROMPT_TABLE).toString();
+}
+
+void SettingsManager::setTablePrompt(const QString& prompt) {
+    if (tablePrompt() != prompt) {
+        m_settings.setValue("prompts/table", prompt);
+        emit tablePromptChanged(prompt);
+    }
+}
+

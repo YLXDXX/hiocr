@@ -54,6 +54,13 @@ private:
 
     // 【新增】请求参数编辑框
     QPlainTextEdit* m_requestParamsEdit;
+
+
+    // 提示词编辑
+    QLineEdit* m_textPromptEdit;
+    QLineEdit* m_formulaPromptEdit;
+    QLineEdit* m_tablePromptEdit;
+
 };
 
 #endif // SETTINGSDIALOG_H
