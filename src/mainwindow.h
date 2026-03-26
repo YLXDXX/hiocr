@@ -27,11 +27,10 @@ public:
     void setBusy(bool busy);
     void setPrompt(const QString& prompt);
     void startAreaSelection(const QImage& fullImage);
+    void copyToClipboard(const QString& text);
 
 public slots:
-    // 【新增】更新停止服务菜单项的状态
     void updateStopServiceAction(bool isRunning);
-
     void onExternalProcessTriggered();
 
 signals:

@@ -272,3 +272,18 @@ void MainWindow::onExternalProcessFinished(int exitCode, QProcess::ExitStatus ex
     }
     process->deleteLater();
 }
+
+
+// 【新增】实现统一复制接口
+void MainWindow::copyToClipboard(const QString& text)
+{
+    if (text.isEmpty()) return;
+
+    if (m_copyBar) {
+        // 复用 MarkdownCopyBar 的逻辑，它会自动处理“是否调用外部程序”的判断
+        m_copyBar->executeCopy(text);
+    } else {
+        // 保底逻辑
+        QApplication::clipboard()->setText(text);
+    }
+}

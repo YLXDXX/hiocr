@@ -339,7 +339,10 @@ void AppController::onRecognitionFinished(const QString& markdown)
 
     if (m_settings->autoCopyResult()) {
         if (!markdown.isEmpty()) {
-            QApplication::clipboard()->setText(markdown);
+            // 【修改】调用 MainWindow 的复制接口，而不是直接设置剪贴板
+            // 这样可以确保走外部程序处理流程（如果已配置）
+            m_mainWindow->copyToClipboard(markdown);
+
             // 移除托盘通知，只静默复制
             // if (m_trayManager) {
             //     m_trayManager->showMessage("识别完成", "结果已自动复制到剪贴板");
