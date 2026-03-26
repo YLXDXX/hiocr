@@ -1,23 +1,49 @@
 #include <QApplication>
 #include <QCommandLineParser>
+#include <QLocalSocket>
 #include <QSocketNotifier>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include "appcontroller.h"
 #include "mainwindow.h"
 
-// 【新增】Unix 信号处理相关头文件
 #include <signal.h>
 #include <unistd.h>
 #include <sys/socket.h>
+#include <iostream> // 【新增】用于手动输出帮助信息
 
-// 【新增】全局静态变量，用于信号通信
+// 单实例通信 Key
+static const QString SINGLE_INSTANCE_KEY = "hiocr_single_instance_socket";
 static int sigintFd[2];
 
-// 【新增】信号处理函数
 void intSignalHandler(int)
 {
-    // 向 socket 写入一个字节，触发 Qt 的事件循环
     char a = 1;
     ::write(sigintFd[0], &a, sizeof(a));
+}
+
+// 尝试连接已运行的实例并发送参数
+bool trySendToExistingInstance(const QString& imagePath, const QString& resultText)
+{
+    QLocalSocket socket;
+    socket.connectToServer(SINGLE_INSTANCE_KEY, QIODevice::WriteOnly);
+
+    if (socket.waitForConnected(500)) {
+        qDebug() << "Sending arguments to running instance...";
+
+        QJsonObject obj;
+        obj["image"] = imagePath;
+        obj["result"] = resultText;
+        QByteArray data = QJsonDocument(obj).toJson();
+
+        socket.write(data);
+        socket.waitForBytesWritten(1000);
+        socket.disconnectFromServer();
+
+        return true;
+    }
+
+    return false;
 }
 
 int main(int argc, char *argv[])
@@ -34,47 +60,69 @@ int main(int argc, char *argv[])
     QCoreApplication::setApplicationName("hiocr");
     QCoreApplication::setApplicationVersion("0.1");
 
-    // 【新增】设置 SIGINT (Ctrl+C) 信号捕获
+    // 1. 设置命令行解析器
+    QCommandLineParser parser;
+    parser.setApplicationDescription("hiocr - 文字识别");
+    // 注意：这里添加了标准的帮助和版本选项
+    parser.addHelpOption();
+    parser.addVersionOption();
+
+    QCommandLineOption imageOption("i", "加载指定的图片文件 <file>", "file");
+    parser.addOption(imageOption);
+
+    QCommandLineOption resultOption("r", "指定识别结果文本 <text>，将进入静态展示模式", "text");
+    parser.addOption(resultOption);
+
+    // 【关键修改】手动解析参数，避免 process() 内部调用 exit() 导致 QApplication 析构函数未执行
+    if (!parser.parse(QCoreApplication::arguments())) {
+        // 解析错误（如参数缺失），输出错误并返回
+        qCritical() << parser.errorText();
+        return 1;
+    }
+
+    // 手动处理帮助选项
+    if (parser.isSet("help")) {
+        std::cout << parser.helpText().toStdString() << std::endl;
+        return 0; // 正常返回，触发 QApplication 析构
+    }
+
+    // 手动处理版本选项
+    if (parser.isSet("version")) {
+        std::cout << QCoreApplication::applicationName().toStdString()
+        << " " << QCoreApplication::applicationVersion().toStdString() << std::endl;
+        return 0; // 正常返回
+    }
+
+    QString imagePath = parser.value(imageOption);
+    QString resultText = parser.value(resultOption);
+
+    // 2. 尝试连接现有实例
+    if (trySendToExistingInstance(imagePath, resultText)) {
+        return 0;
+    }
+
+    // 3. 继续主程序启动逻辑
     if (::socketpair(AF_UNIX, SOCK_STREAM, 0, sigintFd) == 0) {
-        // 注册信号处理函数
         struct sigaction sa;
         sa.sa_handler = intSignalHandler;
         sigemptyset(&sa.sa_mask);
-        sa.sa_flags = 0; // 不使用 SA_RESTART
+        sa.sa_flags = 0;
         sigaction(SIGINT, &sa, nullptr);
 
-        // 创建 QSocketNotifier 监听 socket
-        // 当信号发生时，socket 可读，Qt 事件循环会调用 lambda
         QSocketNotifier *notifier = new QSocketNotifier(sigintFd[1], QSocketNotifier::Read, &app);
         QObject::connect(notifier, &QSocketNotifier::activated, [&]() {
-            // 读取并丢弃数据
             char tmp;
             ::read(sigintFd[1], &tmp, sizeof(tmp));
-
             qDebug() << "Caught Ctrl+C, quitting gracefully...";
-            // 调用 quit 会触发 AppController 析构函数，从而停止服务
             QCoreApplication::quit();
         });
     }
 
-    // 创建控制器
     AppController controller;
     controller.initialize();
 
-    QCommandLineParser parser;
-    parser.setApplicationDescription("hiocr - 文字识别");
-    parser.addHelpOption();
-    parser.addVersionOption();
-    QCommandLineOption imageOption("i", "加载指定的图片文件 <file>", "file");
-    parser.addOption(imageOption);
-    parser.process(app);
-
-    if (parser.isSet(imageOption)) {
-        QString path = parser.value(imageOption);
-        QImage img(path);
-        if (!img.isNull()) {
-            controller.mainWindow()->setImage(img);
-        }
+    if (!imagePath.isEmpty() || !resultText.isEmpty()) {
+        controller.handleCommandLineArguments(imagePath, resultText);
     }
 
     return app.exec();

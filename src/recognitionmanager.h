@@ -19,8 +19,11 @@ public:
     QString lastPrompt() const;
     void setLastPrompt(const QString& prompt);
 
-    // 【新增】获取当前图片 Base64
+    // 获取当前图片 Base64
     QString currentBase64() const { return m_currentBase64; }
+
+    // 【新增】设置当前图片 Base64（用于静态展示，不触发识别）
+    void setCurrentBase64(const QString& base64) { m_currentBase64 = base64; }
 
 signals:
     void recognitionFinished(const QString& markdown);
