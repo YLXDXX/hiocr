@@ -8,6 +8,7 @@
 #include <QShortcut>
 #include <QMouseEvent>
 #include <QWheelEvent>
+#include <QEvent> // 【新增】引入 QEvent
 
 class QPushButton;
 
@@ -39,8 +40,11 @@ signals:
 protected:
     void mousePressEvent(QMouseEvent* event) override;
     void wheelEvent(QWheelEvent* event) override;
-    void resizeEvent(QResizeEvent* event) override;   // 重写以调整按钮位置
+    void resizeEvent(QResizeEvent* event) override;
     void showEvent(QShowEvent* event) override;
+
+    // 【新增】重写 event 方法捕获 DPI 变化
+    bool event(QEvent* event) override;
 
 private slots:
     void openImageFile();
@@ -68,7 +72,6 @@ private:
     QPushButton* m_originalSizeBtn;
 
     QPixmap m_originalPixmap;   // 保留原始图像，用于高质量缩放
-    // 移除 m_displayPixmap，直接使用原图配合视图变换
     bool m_manualZoomMode;      // 是否处于手动缩放模式
 
     void updateButtonStyles();

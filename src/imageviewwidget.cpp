@@ -16,6 +16,21 @@
 #include <QTimer>
 #include <QtMath>
 
+// 【新增】实现 event 方法，捕获屏幕变化和 DPI 变化
+bool ImageViewWidget::event(QEvent* event)
+{
+    // 监听屏幕变化或 DPI 变化事件
+    if (event->type() == QEvent::ScreenChangeInternal ||
+        event->type() == QEvent::DevicePixelRatioChange) {
+
+        // 当 DPI 变化时，强制更新视图以修正缩放比例
+        if (hasImage() && !m_manualZoomMode) {
+            updateView();
+        }
+        }
+        return QWidget::event(event);
+}
+
 ImageViewWidget::ImageViewWidget(QWidget* parent) : QWidget(parent), m_manualZoomMode(false)
 {
     setupUi();
@@ -180,6 +195,7 @@ void ImageViewWidget::updateView()
     if (m_originalPixmap.isNull()) return;
 
     QRectF viewRect = m_view->viewport()->rect();
+    // 【修复】如果视图区域无效（如初始化时），延迟执行
     if (viewRect.isEmpty()) {
         QTimer::singleShot(0, this, &ImageViewWidget::updateView);
         return;
@@ -210,21 +226,28 @@ void ImageViewWidget::updateView()
             break;
         }
         case OriginalSize: {
-            // 【修复】适配高 DPI 屏幕
-            qreal screenDpr = m_view->devicePixelRatioF(); // 获取屏幕 DPR (如 1.5)
-            qreal imageDpr = m_originalPixmap.devicePixelRatio(); // 获取图片 DPR (通常为 1.0)
+            // 【关键修复】适配高 DPI 屏幕
+            // 获取当前控件所在的屏幕 DPR。此时由于我们已经捕获了 ScreenChange 事件，
+            // 这里获取的值应该是准确的最新值。
+            qreal screenDpr = m_view->devicePixelRatioF();
 
+            // 获取图片的 DPR。通常 QImage 加载后为 1.0，除非特别设置。
+            qreal imageDpr = m_originalPixmap.devicePixelRatio();
+
+            // 计算缩放因子：目的是让 1 个图片像素对应 1 个物理像素
+            // 逻辑坐标大小 = 图片像素 / 屏幕DPR
             qreal factor = imageDpr / screenDpr;
 
-            if (!qFuzzyCompare(factor, 1.0)) {
-                m_view->scale(factor, factor);
-            }
+            // 应用缩放
+            m_view->scale(factor, factor);
             break;
         }
     }
 
     // 将图片居中显示
-    m_view->centerOn(m_pixmapItem);
+    if (m_pixmapItem) {
+        m_view->centerOn(m_pixmapItem);
+    }
 }
 
 // 【新增】更新按钮高亮样式的辅助函数
