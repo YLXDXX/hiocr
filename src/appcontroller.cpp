@@ -340,9 +340,10 @@ void AppController::onRecognitionFinished(const QString& markdown)
     if (m_settings->autoCopyResult()) {
         if (!markdown.isEmpty()) {
             QApplication::clipboard()->setText(markdown);
-            if (m_trayManager) {
-                m_trayManager->showMessage("识别完成", "结果已自动复制到剪贴板");
-            }
+            // 移除托盘通知，只静默复制
+            // if (m_trayManager) {
+            //     m_trayManager->showMessage("识别完成", "结果已自动复制到剪贴板");
+            // }
         }
     }
 }

@@ -133,14 +133,20 @@ void MarkdownCopyBar::executeCopy(const QString& text)
     qDebug() << "Copied directly:" << text.left(20);
 }
 
-// 【新增】外部程序处理完成回调
+// 【新增】外部程序处理结束回调
 void MarkdownCopyBar::onExternalProcessFinished(int exitCode, QProcess::ExitStatus exitStatus)
 {
-    // 恢复按钮状态
+    // 【修改】恢复按钮状态时，需要根据当前类型重新计算，不能盲目全部启用
     m_btnOriginal->setEnabled(true);
-    m_btnInline->setEnabled(true);
-    // m_btnDisplay 的状态需要根据当前类型重新计算，这里简单起见直接启用
     m_btnDisplay->setEnabled(true);
+
+    // 【关键修复】行内按钮的状态取决于当前内容类型
+    // 如果是混合内容，行内按钮必须保持禁用
+    if (m_currentType == SingleFormula) {
+        m_btnInline->setEnabled(true);
+    } else {
+        m_btnInline->setEnabled(false);
+    }
 
     if (exitStatus == QProcess::NormalExit && exitCode == 0) {
         QString result = QString::fromUtf8(m_externalProcess->readAllStandardOutput());
