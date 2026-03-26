@@ -76,30 +76,64 @@
                 }
             });
 
-            // 2. 数学公式 tokenizer
-            function mathTokenizer(src) {
-                var match;
-                match = src.match(/^\$\$\s*([\s\S]+?)\s*\$\$/);
-                if (match) return { type: 'math', raw: match[0], text: match[0], display: true };
-                match = src.match(/^\$((?:[^\$]|\\\$)+?)\$/);
-                if (match) return { type: 'math', raw: match[0], text: match[0], display: false };
-                return undefined;
-            }
+            // 2. 公式扩展定义
 
-            const mathExtension = {
-                name: 'math', level: 'inline',
-                start(src) { return src.indexOf('$'); },
-                tokenizer: mathTokenizer,
-                renderer(token) { return token.text; }
+            // 块级公式扩展 (处理 $$...$$)
+            // name 和 token.type 必须保持一致，否则 marked 会报错找不到渲染器
+            const blockMathExtension = {
+                name: 'blockMath',
+                level: 'block',
+                start(src) {
+                    const match = src.match(/^ {0,3}\$\$/m);
+                    return match ? match.index : -1;
+                },
+                tokenizer(src, tokens) {
+                    const rule = /^ {0,3}\$\$([\s\S]+?)\$\$(?:\n+|$)/;
+                    const match = rule.exec(src);
+                    if (match) {
+                        return {
+                            type: 'blockMath', // 必须匹配 name
+                            raw: match[0],
+                            text: match[0],
+                            display: true
+                        };
+                    }
+                    return false;
+                },
+                renderer(token) {
+                    return token.text;
+                }
             };
-            marked.use({ extensions: [mathExtension] });
+
+            // 行内公式扩展 (处理 $...$)
+            const inlineMathExtension = {
+                name: 'inlineMath',
+                level: 'inline',
+                start(src) { return src.indexOf('$'); },
+                tokenizer(src, tokens) {
+                    const match = src.match(/^\$((?:[^\$]|\\\$)+?)\$/);
+                    if (match) {
+                        return {
+                            type: 'inlineMath', // 必须匹配 name
+                            raw: match[0],
+                            text: match[0],
+                            display: false
+                        };
+                    }
+                    return false;
+                },
+                renderer(token) {
+                    return token.text;
+                }
+            };
+
+            // 注册扩展
+            marked.use({ extensions: [blockMathExtension, inlineMathExtension] });
 
             // 3. 字体切换函数 (由 Qt 调用)
             function updateMathFont(fontName) {
                 var link = document.getElementById('math-font-css');
                 if (!link) return;
-                // 构建新 CSS 路径
-                // fontName 格式: "Latin-Modern", "Asana", "STIX2" 等
                 var newHref = 'qrc:/resources/temml/Temml-' + fontName + '.css';
                 if (link.getAttribute('href') !== newHref) {
                     link.setAttribute('href', newHref);
@@ -143,12 +177,8 @@
                 // 连接 Markdown 变化信号
                 bridge.markdownChanged.connect(renderMarkdown);
 
-                // 【新增】连接字体变化信号
+                // 连接字体变化信号
                 bridge.mathFontChanged.connect(updateMathFont);
-
-                // 【新增】初始化：如果 bridge 已经有属性值，立即应用
-                // 注意：Qt WebChannel 属性初始可能为空，需要等待信号或直接读取
-                // 但通常在连接建立时，如果 C++ 端已经 setProperty，这里可以直接读取
 
                 // 初始渲染
                 if (bridge.markdown) {
