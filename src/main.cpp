@@ -11,11 +11,50 @@
 #include <signal.h>
 #include <unistd.h>
 #include <sys/socket.h>
-#include <iostream> // 【新增】用于手动输出帮助信息
+#include <iostream>
+#include <stdio.h> // 【新增】用于 fprintf
 
 // 单实例通信 Key
 static const QString SINGLE_INSTANCE_KEY = "hiocr_single_instance_socket";
 static int sigintFd[2];
+
+// 【新增】全局变量：控制是否输出调试信息
+static bool g_verboseMode = false;
+
+// 【新增】自定义消息处理函数
+void customMessageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg)
+{
+    // 如果不是详细模式，则屏蔽 Debug 和 Info 类型的日志
+    if (!g_verboseMode) {
+        if (type == QtDebugMsg || type == QtInfoMsg) {
+            return;
+        }
+    }
+
+    // 这里我们可以统一控制输出格式
+    QByteArray localMsg = msg.toLocal8Bit();
+    const char *file = context.file ? context.file : "";
+    const char *function = context.function ? context.function : "";
+    const char *typeStr = "";
+
+    switch (type) {
+        case QtDebugMsg: typeStr = "Debug"; break;
+        case QtInfoMsg: typeStr = "Info"; break;
+        case QtWarningMsg: typeStr = "Warning"; break;
+        case QtCriticalMsg: typeStr = "Critical"; break;
+        case QtFatalMsg: typeStr = "Fatal"; break;
+    }
+
+    // 如果开启了详细模式，输出包含文件名和行号的详细信息
+    // 否则只输出简略信息
+    if (g_verboseMode) {
+        fprintf(stderr, "[%s] %s (%s:%u, %s)\n",
+                typeStr, localMsg.constData(), file, context.line, function);
+    } else {
+        // 非详细模式下，Warning 和 Critical 仍然输出，但更简洁
+        fprintf(stderr, "[%s] %s\n", typeStr, localMsg.constData());
+    }
+}
 
 void intSignalHandler(int)
 {
@@ -39,8 +78,8 @@ bool trySendToExistingInstance(QString imagePath, const QString& resultText)
     socket.connectToServer(SINGLE_INSTANCE_KEY, QIODevice::WriteOnly);
 
     if (socket.waitForConnected(500)) {
-        qDebug() << "Sending arguments to running instance...";
-
+        // 这里故意不使用 qDebug，因为此时如果消息处理器已安装但 verbose 未设置，这行日志可能会被吞掉
+        // 不过作为客户端，通常日志是给用户看的，这里保持静默或直接打印即可
         QJsonObject obj;
         obj["image"] = imagePath;
         obj["result"] = resultText;
@@ -59,6 +98,9 @@ bool trySendToExistingInstance(QString imagePath, const QString& resultText)
 
 int main(int argc, char *argv[])
 {
+    // 【关键】在创建 QApplication 之前安装消息处理程序
+    qInstallMessageHandler(customMessageHandler);
+
     qputenv("QT_NO_XDG_DESKTOP_PORTAL", "1");
     qputenv("QT_NO_GLOBAL_STATUSTRAY", "1");
     qputenv("XDG_ACTIVATION_TOKEN", "hiocr");
@@ -74,9 +116,12 @@ int main(int argc, char *argv[])
     // 1. 设置命令行解析器
     QCommandLineParser parser;
     parser.setApplicationDescription("hiocr - 文字识别");
-    // 注意：这里添加了标准的帮助和版本选项
     parser.addHelpOption();
     parser.addVersionOption();
+
+    // 【新增】添加 verbose 选项
+    QCommandLineOption verboseOption("verbose", "Enable debug output (qDebug/qInfo)");
+    parser.addOption(verboseOption);
 
     QCommandLineOption imageOption("i", "加载指定的图片文件 <file>", "file");
     parser.addOption(imageOption);
@@ -84,9 +129,8 @@ int main(int argc, char *argv[])
     QCommandLineOption resultOption("r", "指定识别结果文本 <text>，将进入静态展示模式", "text");
     parser.addOption(resultOption);
 
-    // 【关键修改】手动解析参数，避免 process() 内部调用 exit() 导致 QApplication 析构函数未执行
+    // 手动解析参数
     if (!parser.parse(QCoreApplication::arguments())) {
-        // 解析错误（如参数缺失），输出错误并返回
         qCritical() << parser.errorText();
         return 1;
     }
@@ -94,14 +138,19 @@ int main(int argc, char *argv[])
     // 手动处理帮助选项
     if (parser.isSet("help")) {
         std::cout << parser.helpText().toStdString() << std::endl;
-        return 0; // 正常返回，触发 QApplication 析构
+        return 0;
     }
 
-    // 手动处理版本选项
     if (parser.isSet("version")) {
         std::cout << QCoreApplication::applicationName().toStdString()
         << " " << QCoreApplication::applicationVersion().toStdString() << std::endl;
-        return 0; // 正常返回
+        return 0;
+    }
+
+    // 【新增】检查是否开启了详细模式
+    if (parser.isSet(verboseOption)) {
+        g_verboseMode = true;
+        qDebug() << "Verbose mode enabled.";
     }
 
     QString imagePath = parser.value(imageOption);
@@ -131,7 +180,7 @@ int main(int argc, char *argv[])
         QObject::connect(notifier, &QSocketNotifier::activated, [&]() {
             char tmp;
             ::read(sigintFd[1], &tmp, sizeof(tmp));
-            qDebug() << "Caught Ctrl+C, quitting gracefully...";
+            qDebug() << "Caught Ctrl+C, quitting gracefully..."; // 仅在 verbose 模式可见
             QCoreApplication::quit();
         });
     }
