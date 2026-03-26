@@ -92,6 +92,10 @@ void SettingsManager::initializeDefaults()
     if (!m_settings.contains("behavior/auto_external_process_before_copy")) {
         m_settings.setValue("behavior/auto_external_process_before_copy", false); // 默认关闭
     }
+
+    if (!m_settings.contains("shortcuts/external_process")) {
+        m_settings.setValue("shortcuts/external_process", Constants::SHORTCUT_EXTERNAL_PROCESS);
+    }
 }
 
 // 【新增】提供显式保存接口
@@ -308,5 +312,16 @@ void SettingsManager::setAutoExternalProcessBeforeCopy(bool enabled) {
     if (autoExternalProcessBeforeCopy() != enabled) {
         m_settings.setValue("behavior/auto_external_process_before_copy", enabled);
         emit autoExternalProcessBeforeCopyChanged(enabled);
+    }
+}
+
+QString SettingsManager::externalProcessShortcut() const {
+    return m_settings.value("shortcuts/external_process", Constants::SHORTCUT_EXTERNAL_PROCESS).toString();
+}
+
+void SettingsManager::setExternalProcessShortcut(const QString& key) {
+    if (externalProcessShortcut() != key) {
+        m_settings.setValue("shortcuts/external_process", key);
+        emit externalProcessShortcutChanged(key);
     }
 }

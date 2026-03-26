@@ -1,5 +1,6 @@
 #ifndef SETTINGSDIALOG_H
 #define SETTINGSDIALOG_H
+#include "shortcutedit.h"
 
 #include <QDialog>
 #include <QLineEdit>
@@ -29,10 +30,11 @@ private:
     QLineEdit* m_externalProcessorEdit;
 
     // 快捷键编辑
-    QLineEdit* m_scScreenshotEdit;
-    QLineEdit* m_scTextEdit;
-    QLineEdit* m_scFormulaEdit;
-    QLineEdit* m_scTableEdit;
+    ShortcutEdit* m_scScreenshotEdit;
+    ShortcutEdit* m_scTextEdit;
+    ShortcutEdit* m_scFormulaEdit;
+    ShortcutEdit* m_scTableEdit;
+    ShortcutEdit* m_scExternalProcessEdit; // 【新增】
 
     // 行为设置
     QCheckBox* m_autoUseLastPromptCheck;

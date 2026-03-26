@@ -83,6 +83,9 @@ public:
     bool autoExternalProcessBeforeCopy() const;
     void setAutoExternalProcessBeforeCopy(bool enabled);
 
+    QString externalProcessShortcut() const;
+    void setExternalProcessShortcut(const QString& key);
+
 signals:
     void serverUrlChanged(const QString& url);
     void shortcutsChanged();
@@ -107,6 +110,8 @@ signals:
     void tablePromptChanged(const QString& prompt);
 
     void autoExternalProcessBeforeCopyChanged(bool enabled);
+
+    void externalProcessShortcutChanged(const QString& key);
 
 private:
     explicit SettingsManager(QObject* parent = nullptr);

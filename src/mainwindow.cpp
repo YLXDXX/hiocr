@@ -115,7 +115,6 @@ void MainWindow::setupMenuBar()
         // --- 工具菜单 ---
         QMenu* toolsMenu = menuBar->addMenu("工具");
         QAction* extAct = toolsMenu->addAction("外部程序处理并复制", this, &MainWindow::onExternalProcessTriggered);
-        extAct->setShortcut(QKeySequence("Ctrl+Shift+E"));
 
         // 【新增】停止服务菜单项
         m_stopServiceAction = toolsMenu->addAction("停止识别服务", this, [this](){

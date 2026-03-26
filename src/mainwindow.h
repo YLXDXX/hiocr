@@ -32,6 +32,8 @@ public slots:
     // 【新增】更新停止服务菜单项的状态
     void updateStopServiceAction(bool isRunning);
 
+    void onExternalProcessTriggered();
+
 signals:
     void recognizeRequested(const QString& prompt, const QString& base64Image);
     void imagePasted(const QImage& image);
@@ -49,8 +51,6 @@ private slots:
     void onMarkdownSourceChanged();
     void onPromptBarRecognize();
     void onPromptBarAutoRecognize(const QString& prompt);
-
-    void onExternalProcessTriggered();
     void onExternalProcessFinished(int exitCode, QProcess::ExitStatus exitStatus);
 
 private:

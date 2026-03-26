@@ -69,14 +69,20 @@ void SettingsDialog::setupUi()
     // --- 快捷键设置 ---
     QGroupBox* shortcutGroup = new QGroupBox("快捷键设置");
     QFormLayout* shortcutLayout = new QFormLayout(shortcutGroup);
-    m_scScreenshotEdit = new QLineEdit();
-    m_scTextEdit = new QLineEdit();
-    m_scFormulaEdit = new QLineEdit();
-    m_scTableEdit = new QLineEdit();
+
+    // 【修改】使用 ShortcutEdit
+    m_scScreenshotEdit = new ShortcutEdit();
+    m_scTextEdit = new ShortcutEdit();
+    m_scFormulaEdit = new ShortcutEdit();
+    m_scTableEdit = new ShortcutEdit();
+    m_scExternalProcessEdit = new ShortcutEdit(); // 【新增】
+
     shortcutLayout->addRow("截图:", m_scScreenshotEdit);
     shortcutLayout->addRow("文字识别:", m_scTextEdit);
     shortcutLayout->addRow("公式识别:", m_scFormulaEdit);
     shortcutLayout->addRow("表格识别:", m_scTableEdit);
+    shortcutLayout->addRow("外部程序处理:", m_scExternalProcessEdit); // 【新增】
+
     mainLayout->addWidget(shortcutGroup);
 
     // --- 显示设置 ---
@@ -236,6 +242,8 @@ void SettingsDialog::loadSettings()
     m_tablePromptEdit->setText(s->tablePrompt());
 
     m_autoExternalProcessCheck->setChecked(s->autoExternalProcessBeforeCopy());
+
+    m_scExternalProcessEdit->setText(s->externalProcessShortcut());
 }
 
 void SettingsDialog::onSaveClicked()
@@ -277,6 +285,8 @@ void SettingsDialog::onSaveClicked()
 
     s->setAutoExternalProcessBeforeCopy(m_autoExternalProcessCheck->isChecked());
 
+    s->setExternalProcessShortcut(m_scExternalProcessEdit->text());
+
     accept();
 }
 
@@ -309,6 +319,8 @@ void SettingsDialog::onRestoreDefaults()
     m_tablePromptEdit->setText(Constants::PROMPT_TABLE);
 
     m_autoExternalProcessCheck->setChecked(false); // 默认关闭
+
+    m_scExternalProcessEdit->setText(Constants::SHORTCUT_EXTERNAL_PROCESS);
 
     m_externalProcessorEdit->clear();
 }

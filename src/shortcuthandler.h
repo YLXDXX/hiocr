@@ -18,6 +18,7 @@ signals:
     void textRecognizeRequested();
     void formulaRecognizeRequested();
     void tableRecognizeRequested();
+    void externalProcessRequested();
 
 private:
     void setupLocalShortcuts();
@@ -27,6 +28,7 @@ private:
     QShortcut* m_scText = nullptr;
     QShortcut* m_scFormula = nullptr;
     QShortcut* m_scTable = nullptr;
+    QShortcut* m_scExternalProcess = nullptr;
 };
 
 #endif // SHORTCUTHANDLER_H

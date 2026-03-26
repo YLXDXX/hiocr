@@ -65,6 +65,7 @@ void AppController::setupConnections()
     connect(m_shortcutHandler, &ShortcutHandler::textRecognizeRequested, this, &AppController::takeTextRecognizeScreenshot);
     connect(m_shortcutHandler, &ShortcutHandler::formulaRecognizeRequested, this, &AppController::takeFormulaRecognizeScreenshot);
     connect(m_shortcutHandler, &ShortcutHandler::tableRecognizeRequested, this, &AppController::takeTableRecognizeScreenshot);
+    connect(m_shortcutHandler, &ShortcutHandler::externalProcessRequested, m_mainWindow, &MainWindow::onExternalProcessTriggered);
 
     // --- 托盘 -> 动作 ---
     connect(m_trayManager, &TrayManager::screenshotRequested, this, &AppController::takeScreenshot);
