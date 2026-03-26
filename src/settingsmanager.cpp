@@ -1,5 +1,5 @@
 #include "settingsmanager.h"
-#include "constants.h" // 引入常量
+#include "constants.h"
 
 #include <QFile>
 #include <QStandardPaths>
@@ -14,33 +14,13 @@ SettingsManager* SettingsManager::instance()
 
 SettingsManager::SettingsManager(QObject* parent) : QObject(parent)
 {
-    // 初始化默认配置（如果配置文件不存在）
+    // 初始化默认配置（如果配置文件不存在或版本过旧）
     initializeDefaults();
 }
 
-
-// 【新增】实现
-QString SettingsManager::requestParameters() const {
-    // 如果用户未设置，返回默认 JSON
-    return m_settings.value("network/request_parameters", Constants::DEFAULT_REQUEST_PARAMETERS).toString();
-}
-
-void SettingsManager::setRequestParameters(const QString& json) {
-    if (requestParameters() != json) {
-        m_settings.setValue("network/request_parameters", json);
-        emit requestParametersChanged(json);
-    }
-}
-
-// 【新增】检查并初始化默认配置文件
 void SettingsManager::initializeDefaults()
 {
-    // 检测配置文件是否存在
-    // QSettings 默认存储路径在 Linux 下通常为 ~/.config/hiocr/hiocr.conf
-    QString configPath = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) + "/hiocr/hiocr.conf";
-
-    // QFile::exists 不支持检测 QSettings 的 "UserScope" 抽象路径，因此我们直接尝试读取一个关键键值
-    // 如果 server/url 键不存在，说明这是一个全新的配置环境
+    // 检测配置文件是否存在关键键值，以此判断是否为全新环境
     if (!m_settings.contains("server/url")) {
         qDebug() << "Configuration file not found or empty, initializing with defaults...";
 
@@ -51,8 +31,9 @@ void SettingsManager::initializeDefaults()
         m_settings.setValue("shortcuts/text_recognize", Constants::SHORTCUT_TEXT);
         m_settings.setValue("shortcuts/formula_recognize", Constants::SHORTCUT_FORMULA);
         m_settings.setValue("shortcuts/table_recognize", Constants::SHORTCUT_TABLE);
+        m_settings.setValue("shortcuts/external_process", Constants::SHORTCUT_EXTERNAL_PROCESS);
 
-        m_settings.setValue("auto_use_last_prompt", true);
+        m_settings.setValue("behavior/auto_use_last_prompt", true);
         m_settings.setValue("display_math_env", Constants::DEFAULT_DISPLAY_MATH_ENV);
         m_settings.setValue("display/math_font", Constants::DEFAULT_MATH_FONT);
 
@@ -60,52 +41,64 @@ void SettingsManager::initializeDefaults()
         m_settings.setValue("behavior/auto_copy_result", Constants::DEFAULT_AUTO_COPY_RESULT);
         m_settings.setValue("behavior/auto_recognize_screenshot", Constants::DEFAULT_AUTO_RECOGNIZE_SCREENSHOT);
 
+        // 【修复】写入缺失的默认设置
+        m_settings.setValue("behavior/auto_external_process_before_copy", Constants::DEFAULT_AUTO_EXTERNAL_PROCESS_BEFORE_COPY);
+
         m_settings.setValue("service/auto_start", Constants::DEFAULT_AUTO_START_SERVICE);
         m_settings.setValue("service/start_command", Constants::DEFAULT_SERVICE_START_COMMAND);
         m_settings.setValue("service/idle_timeout", Constants::DEFAULT_SERVICE_IDLE_TIMEOUT);
+
+        m_settings.setValue("network/request_parameters", Constants::DEFAULT_REQUEST_PARAMETERS);
+        m_settings.setValue("display/view_mode", Constants::DEFAULT_IMAGE_VIEW_MODE);
+
+        m_settings.setValue("prompts/text", Constants::PROMPT_TEXT);
+        m_settings.setValue("prompts/formula", Constants::PROMPT_FORMULA);
+        m_settings.setValue("prompts/table", Constants::PROMPT_TABLE);
 
         // 强制写入磁盘
         m_settings.sync();
         qDebug() << "Configuration file created at:" << m_settings.fileName();
     }
-
-    // 【新增】
-    if (!m_settings.contains("network/request_parameters")) {
-        m_settings.setValue("network/request_parameters", Constants::DEFAULT_REQUEST_PARAMETERS);
-    }
-
-    if (!m_settings.contains("display/view_mode")) {
-        m_settings.setValue("display/view_mode", Constants::DEFAULT_IMAGE_VIEW_MODE);
-    }
-
-    // 【新增】提示词默认值
-    if (!m_settings.contains("prompts/text")) {
-        m_settings.setValue("prompts/text", Constants::PROMPT_TEXT);
-    }
-    if (!m_settings.contains("prompts/formula")) {
-        m_settings.setValue("prompts/formula", Constants::PROMPT_FORMULA);
-    }
-    if (!m_settings.contains("prompts/table")) {
-        m_settings.setValue("prompts/table", Constants::PROMPT_TABLE);
-    }
-
-    if (!m_settings.contains("behavior/auto_external_process_before_copy")) {
-        m_settings.setValue("behavior/auto_external_process_before_copy", false); // 默认关闭
-    }
-
-    if (!m_settings.contains("shortcuts/external_process")) {
-        m_settings.setValue("shortcuts/external_process", Constants::SHORTCUT_EXTERNAL_PROCESS);
+    else {
+        // 【修复】兼容性检查：如果配置文件存在但缺少某些键（例如更新软件后），补充默认值
+        if (!m_settings.contains("behavior/auto_external_process_before_copy")) {
+            m_settings.setValue("behavior/auto_external_process_before_copy", Constants::DEFAULT_AUTO_EXTERNAL_PROCESS_BEFORE_COPY);
+        }
+        if (!m_settings.contains("shortcuts/external_process")) {
+            m_settings.setValue("shortcuts/external_process", Constants::SHORTCUT_EXTERNAL_PROCESS);
+        }
+        if (!m_settings.contains("network/request_parameters")) {
+            m_settings.setValue("network/request_parameters", Constants::DEFAULT_REQUEST_PARAMETERS);
+        }
+        if (!m_settings.contains("display/math_font")) {
+            m_settings.setValue("display/math_font", Constants::DEFAULT_MATH_FONT);
+        }
+        if (!m_settings.contains("display/view_mode")) {
+            m_settings.setValue("display/view_mode", Constants::DEFAULT_IMAGE_VIEW_MODE);
+        }
+        if (!m_settings.contains("prompts/text")) {
+            m_settings.setValue("prompts/text", Constants::PROMPT_TEXT);
+        }
+        if (!m_settings.contains("prompts/formula")) {
+            m_settings.setValue("prompts/formula", Constants::PROMPT_FORMULA);
+        }
+        if (!m_settings.contains("prompts/table")) {
+            m_settings.setValue("prompts/table", Constants::PROMPT_TABLE);
+        }
+        if (!m_settings.contains("shortcuts/external_process")) {
+            m_settings.setValue("shortcuts/external_process", Constants::SHORTCUT_EXTERNAL_PROCESS);
+        }
     }
 }
 
-// 【新增】提供显式保存接口
 void SettingsManager::sync()
 {
     m_settings.sync();
 }
 
+// --- 服务器设置 ---
+
 QString SettingsManager::serverUrl() const {
-    // 使用 Constants 命名空间
     return m_settings.value("server/url", Constants::DEFAULT_SERVER_URL).toString();
 }
 
@@ -116,7 +109,8 @@ void SettingsManager::setServerUrl(const QString& url) {
     }
 }
 
-// 【新增】实现
+// --- 数学字体设置 ---
+
 QString SettingsManager::mathFont() const {
     return m_settings.value("display/math_font", Constants::DEFAULT_MATH_FONT).toString();
 }
@@ -127,6 +121,8 @@ void SettingsManager::setMathFont(const QString& font) {
         emit mathFontChanged(font);
     }
 }
+
+// --- 快捷键设置 ---
 
 QString SettingsManager::screenshotShortcut() const {
     return m_settings.value("shortcuts/screenshot", Constants::SHORTCUT_SCREENSHOT).toString();
@@ -144,34 +140,54 @@ QString SettingsManager::tableRecognizeShortcut() const {
     return m_settings.value("shortcuts/table_recognize", Constants::SHORTCUT_TABLE).toString();
 }
 
-// Setters 保持不变
+QString SettingsManager::externalProcessShortcut() const {
+    return m_settings.value("shortcuts/external_process", Constants::SHORTCUT_EXTERNAL_PROCESS).toString();
+}
+
 void SettingsManager::setScreenshotShortcut(const QString& key) {
-    m_settings.setValue("shortcuts/screenshot", key);
-    emit shortcutsChanged();
+    if (screenshotShortcut() != key) {
+        m_settings.setValue("shortcuts/screenshot", key);
+        emit shortcutsChanged();
+    }
 }
 
 void SettingsManager::setTextRecognizeShortcut(const QString& key) {
-    m_settings.setValue("shortcuts/text_recognize", key);
-    emit shortcutsChanged();
+    if (textRecognizeShortcut() != key) {
+        m_settings.setValue("shortcuts/text_recognize", key);
+        emit shortcutsChanged();
+    }
 }
 
 void SettingsManager::setFormulaRecognizeShortcut(const QString& key) {
-    m_settings.setValue("shortcuts/formula_recognize", key);
-    emit shortcutsChanged();
+    if (formulaRecognizeShortcut() != key) {
+        m_settings.setValue("shortcuts/formula_recognize", key);
+        emit shortcutsChanged();
+    }
 }
 
 void SettingsManager::setTableRecognizeShortcut(const QString& key) {
-    m_settings.setValue("shortcuts/table_recognize", key);
-    emit shortcutsChanged();
+    if (tableRecognizeShortcut() != key) {
+        m_settings.setValue("shortcuts/table_recognize", key);
+        emit shortcutsChanged();
+    }
 }
 
+void SettingsManager::setExternalProcessShortcut(const QString& key) {
+    if (externalProcessShortcut() != key) {
+        m_settings.setValue("shortcuts/external_process", key);
+        emit externalProcessShortcutChanged(key);
+    }
+}
+
+// --- 行为设置 ---
+
 bool SettingsManager::autoUseLastPrompt() const {
-    return m_settings.value("auto_use_last_prompt", true).toBool();
+    return m_settings.value("behavior/auto_use_last_prompt", true).toBool();
 }
 
 void SettingsManager::setAutoUseLastPrompt(bool enabled) {
     if (autoUseLastPrompt() != enabled) {
-        m_settings.setValue("auto_use_last_prompt", enabled);
+        m_settings.setValue("behavior/auto_use_last_prompt", enabled);
         emit autoUseLastPromptChanged(enabled);
     }
 }
@@ -187,7 +203,6 @@ void SettingsManager::setDisplayMathEnvironment(const QString& env) {
     }
 }
 
-
 QString SettingsManager::externalProcessorCommand() const {
     return m_settings.value("external_processor/command", Constants::DEFAULT_EXTERNAL_PROCESSOR).toString();
 }
@@ -198,8 +213,6 @@ void SettingsManager::setExternalProcessorCommand(const QString& cmd) {
         emit externalProcessorCommandChanged(cmd);
     }
 }
-
-
 
 bool SettingsManager::autoCopyResult() const {
     return m_settings.value("behavior/auto_copy_result", Constants::DEFAULT_AUTO_COPY_RESULT).toBool();
@@ -223,6 +236,19 @@ void SettingsManager::setAutoRecognizeOnScreenshot(bool enabled) {
     }
 }
 
+// 【修复】实现复制前自动处理设置
+bool SettingsManager::autoExternalProcessBeforeCopy() const {
+    return m_settings.value("behavior/auto_external_process_before_copy", Constants::DEFAULT_AUTO_EXTERNAL_PROCESS_BEFORE_COPY).toBool();
+}
+
+void SettingsManager::setAutoExternalProcessBeforeCopy(bool enabled) {
+    if (autoExternalProcessBeforeCopy() != enabled) {
+        m_settings.setValue("behavior/auto_external_process_before_copy", enabled);
+        emit autoExternalProcessBeforeCopyChanged(enabled);
+    }
+}
+
+// --- 服务管理设置 ---
 
 bool SettingsManager::autoStartService() const {
     return m_settings.value("service/auto_start", Constants::DEFAULT_AUTO_START_SERVICE).toBool();
@@ -257,6 +283,21 @@ void SettingsManager::setServiceIdleTimeout(int minutes) {
     }
 }
 
+// --- 网络请求设置 ---
+
+QString SettingsManager::requestParameters() const {
+    return m_settings.value("network/request_parameters", Constants::DEFAULT_REQUEST_PARAMETERS).toString();
+}
+
+void SettingsManager::setRequestParameters(const QString& json) {
+    if (requestParameters() != json) {
+        m_settings.setValue("network/request_parameters", json);
+        emit requestParametersChanged(json);
+    }
+}
+
+// --- 界面设置 ---
+
 int SettingsManager::imageViewMode() const {
     return m_settings.value("display/view_mode", Constants::DEFAULT_IMAGE_VIEW_MODE).toInt();
 }
@@ -268,7 +309,7 @@ void SettingsManager::setImageViewMode(int mode) {
     }
 }
 
-
+// --- 提示词设置 ---
 
 QString SettingsManager::textPrompt() const {
     return m_settings.value("prompts/text", Constants::PROMPT_TEXT).toString();
@@ -300,28 +341,5 @@ void SettingsManager::setTablePrompt(const QString& prompt) {
     if (tablePrompt() != prompt) {
         m_settings.setValue("prompts/table", prompt);
         emit tablePromptChanged(prompt);
-    }
-}
-
-
-bool SettingsManager::autoExternalProcessBeforeCopy() const {
-    return m_settings.value("behavior/auto_external_process_before_copy", false).toBool();
-}
-
-void SettingsManager::setAutoExternalProcessBeforeCopy(bool enabled) {
-    if (autoExternalProcessBeforeCopy() != enabled) {
-        m_settings.setValue("behavior/auto_external_process_before_copy", enabled);
-        emit autoExternalProcessBeforeCopyChanged(enabled);
-    }
-}
-
-QString SettingsManager::externalProcessShortcut() const {
-    return m_settings.value("shortcuts/external_process", Constants::SHORTCUT_EXTERNAL_PROCESS).toString();
-}
-
-void SettingsManager::setExternalProcessShortcut(const QString& key) {
-    if (externalProcessShortcut() != key) {
-        m_settings.setValue("shortcuts/external_process", key);
-        emit externalProcessShortcutChanged(key);
     }
 }
