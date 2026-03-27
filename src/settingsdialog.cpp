@@ -104,6 +104,18 @@ void SettingsDialog::setupUi()
     m_mathFontCombo->addItem("Local (系统默认)", "Local");
     displayLayout->addRow("数学字体:", m_mathFontCombo);
 
+    // 【新增】Markdown 渲染字体大小
+    m_rendererFontSpin = new QSpinBox();
+    m_rendererFontSpin->setRange(8, 32);
+    m_rendererFontSpin->setSuffix(" pt");
+    displayLayout->addRow("渲染区字体大小:", m_rendererFontSpin);
+
+    // 【新增】Markdown 源码编辑字体大小
+    m_sourceEditorFontSpin = new QSpinBox();
+    m_sourceEditorFontSpin->setRange(8, 32);
+    m_sourceEditorFontSpin->setSuffix(" pt");
+    displayLayout->addRow("源码编辑字体大小:", m_sourceEditorFontSpin);
+
     mainLayout->addWidget(displayGroup);
 
     // --- 行为设置 ---
@@ -244,6 +256,10 @@ void SettingsDialog::loadSettings()
     m_autoExternalProcessCheck->setChecked(s->autoExternalProcessBeforeCopy());
 
     m_scExternalProcessEdit->setText(s->externalProcessShortcut());
+
+    // 【新增】加载字体设置
+    m_rendererFontSpin->setValue(SettingsManager::instance()->rendererFontSize());
+    m_sourceEditorFontSpin->setValue(SettingsManager::instance()->sourceEditorFontSize());
 }
 
 void SettingsDialog::onSaveClicked()
@@ -287,6 +303,10 @@ void SettingsDialog::onSaveClicked()
 
     s->setExternalProcessShortcut(m_scExternalProcessEdit->text());
 
+    // 【新增】保存字体设置
+    s->setRendererFontSize(m_rendererFontSpin->value());
+    s->setSourceEditorFontSize(m_sourceEditorFontSpin->value());
+
     accept();
 }
 
@@ -321,6 +341,10 @@ void SettingsDialog::onRestoreDefaults()
     m_autoExternalProcessCheck->setChecked(false); // 默认关闭
 
     m_scExternalProcessEdit->setText(Constants::SHORTCUT_EXTERNAL_PROCESS);
+
+    // 【新增】恢复默认字体设置
+    m_rendererFontSpin->setValue(Constants::DEFAULT_RENDERER_FONT_SIZE);
+    m_sourceEditorFontSpin->setValue(Constants::DEFAULT_SOURCE_EDITOR_FONT_SIZE);
 
     m_externalProcessorEdit->clear();
 }

@@ -48,6 +48,10 @@ namespace Constants {
 
     // 默认图片预览模式 (0=整页, 1=同宽, 2=同高, 3=原大)
     const int DEFAULT_IMAGE_VIEW_MODE = 3;
+
+    // 【新增】字体大小默认值
+    const int DEFAULT_RENDERER_FONT_SIZE = 16;   // Markdown 渲染区默认字体大小
+    const int DEFAULT_SOURCE_EDITOR_FONT_SIZE = 16; // Markdown 源码编辑区默认字体大小
 }
 
 #endif // CONSTANTS_H

@@ -55,6 +55,10 @@ void SettingsManager::initializeDefaults()
         m_settings.setValue("prompts/formula", Constants::PROMPT_FORMULA);
         m_settings.setValue("prompts/table", Constants::PROMPT_TABLE);
 
+        // 【新增】写入字体大小默认值
+        m_settings.setValue("display/renderer_font_size", Constants::DEFAULT_RENDERER_FONT_SIZE);
+        m_settings.setValue("display/source_editor_font_size", Constants::DEFAULT_SOURCE_EDITOR_FONT_SIZE);
+
         // 强制写入磁盘
         m_settings.sync();
         qDebug() << "Configuration file created at:" << m_settings.fileName();
@@ -87,6 +91,12 @@ void SettingsManager::initializeDefaults()
         }
         if (!m_settings.contains("shortcuts/external_process")) {
             m_settings.setValue("shortcuts/external_process", Constants::SHORTCUT_EXTERNAL_PROCESS);
+        }
+        if (!m_settings.contains("display/renderer_font_size")) {
+            m_settings.setValue("display/renderer_font_size", Constants::DEFAULT_RENDERER_FONT_SIZE);
+        }
+        if (!m_settings.contains("display/source_editor_font_size")) {
+            m_settings.setValue("display/source_editor_font_size", Constants::DEFAULT_SOURCE_EDITOR_FONT_SIZE);
         }
     }
 }
@@ -341,5 +351,28 @@ void SettingsManager::setTablePrompt(const QString& prompt) {
     if (tablePrompt() != prompt) {
         m_settings.setValue("prompts/table", prompt);
         emit tablePromptChanged(prompt);
+    }
+}
+
+
+int SettingsManager::rendererFontSize() const {
+    return m_settings.value("display/renderer_font_size", Constants::DEFAULT_RENDERER_FONT_SIZE).toInt();
+}
+
+void SettingsManager::setRendererFontSize(int size) {
+    if (rendererFontSize() != size) {
+        m_settings.setValue("display/renderer_font_size", size);
+        emit rendererFontSizeChanged(size);
+    }
+}
+
+int SettingsManager::sourceEditorFontSize() const {
+    return m_settings.value("display/source_editor_font_size", Constants::DEFAULT_SOURCE_EDITOR_FONT_SIZE).toInt();
+}
+
+void SettingsManager::setSourceEditorFontSize(int size) {
+    if (sourceEditorFontSize() != size) {
+        m_settings.setValue("display/source_editor_font_size", size);
+        emit sourceEditorFontSizeChanged(size);
     }
 }

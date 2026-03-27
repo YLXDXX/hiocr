@@ -65,6 +65,10 @@ private:
 
     QCheckBox* m_autoExternalProcessCheck;
 
+    // 【新增】字体大小控件
+    QSpinBox* m_rendererFontSpin;
+    QSpinBox* m_sourceEditorFontSpin;
+
 };
 
 #endif // SETTINGSDIALOG_H

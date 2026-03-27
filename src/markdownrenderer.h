@@ -23,6 +23,9 @@ private slots:
     void onPageLoaded(bool ok);
     void renderMarkdown(const QString& markdown);
 
+    // 【新增】应用字体大小槽函数
+    void applyFontSize(int size);
+
 private:
     void setupUi();
 

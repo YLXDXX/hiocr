@@ -86,6 +86,13 @@ public:
     QString externalProcessShortcut() const;
     void setExternalProcessShortcut(const QString& key);
 
+    // 【新增】字体大小设置
+    int rendererFontSize() const;
+    void setRendererFontSize(int size);
+
+    int sourceEditorFontSize() const;
+    void setSourceEditorFontSize(int size);
+
 signals:
     void serverUrlChanged(const QString& url);
     void shortcutsChanged();
@@ -113,12 +120,12 @@ signals:
 
     void externalProcessShortcutChanged(const QString& key);
 
+    void rendererFontSizeChanged(int size);
+    void sourceEditorFontSizeChanged(int size);
+
 private:
     explicit SettingsManager(QObject* parent = nullptr);
-
-    // 【新增】初始化默认值逻辑
     void initializeDefaults();
-
     QSettings m_settings;
 };
 

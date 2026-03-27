@@ -1,15 +1,21 @@
 #include "markdownsourceeditor.h"
+#include "settingsmanager.h"
+
 #include <QFont>
-#include <QTextDocument>
-#include <QTextOption>
 
 MarkdownSourceEditor::MarkdownSourceEditor(QWidget* parent)
 : QPlainTextEdit(parent)
 {
-    QFont font("Courier New", 16);
+    QFont font("Courier New", SettingsManager::instance()->sourceEditorFontSize());
     setFont(font);
-    QTextDocument* doc = document();
-    QTextOption option = doc->defaultTextOption();
-    option.setAlignment(Qt::AlignLeft);
-    doc->setDefaultTextOption(option);
+
+    // 【新增】监听设置变化
+    connect(SettingsManager::instance(), &SettingsManager::sourceEditorFontSizeChanged, this, &MarkdownSourceEditor::onFontSizeChanged);
+}
+
+void MarkdownSourceEditor::onFontSizeChanged(int size)
+{
+    QFont currentFont = font();
+    currentFont.setPointSize(size);
+    setFont(currentFont);
 }

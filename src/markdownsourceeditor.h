@@ -9,6 +9,10 @@ class MarkdownSourceEditor : public QPlainTextEdit
 
 public:
     explicit MarkdownSourceEditor(QWidget* parent = nullptr);
+
+private slots:
+    // 【新增】字体大小变化槽
+    void onFontSizeChanged(int size);
 };
 
 #endif // MARKDOWNSOURCEEDITOR_H

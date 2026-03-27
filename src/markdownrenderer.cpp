@@ -39,6 +39,12 @@ void MarkdownRenderer::setupUi()
     // 【新增】连接信号，当设置中的字体改变时，更新 Bridge
     connect(SettingsManager::instance(), &SettingsManager::mathFontChanged, m_bridge, &MarkdownBridge::setMathFont);
 
+    // 【新增】初始化字体大小
+    applyFontSize(SettingsManager::instance()->rendererFontSize());
+
+    // 【新增】连接字体大小变化信号
+    connect(SettingsManager::instance(), &SettingsManager::rendererFontSizeChanged, this, &MarkdownRenderer::applyFontSize);
+
     m_channel = new QWebChannel(this);
     m_channel->registerObject("bridge", m_bridge);
     m_view->page()->setWebChannel(m_channel);
@@ -65,13 +71,29 @@ void MarkdownRenderer::setMarkdown(const QString& markdown)
         m_pendingMarkdown = markdown;
 }
 
+
+void MarkdownRenderer::applyFontSize(int size)
+{
+    // 如果页面已加载，通过 JS 动态修改样式
+    if (m_view && m_loaded) {
+        QString js = QString("document.body.style.fontSize = '%1px';").arg(size);
+        m_view->page()->runJavaScript(js);
+    }
+}
+
 void MarkdownRenderer::onPageLoaded(bool ok)
 {
-    m_loaded = true;
+    m_loaded = ok;
     emit pageLoaded(ok);
-    if (!m_pendingMarkdown.isEmpty()) {
-        renderMarkdown(m_pendingMarkdown);
-        m_pendingMarkdown.clear();
+
+    if (ok) {
+        // 页面加载完成后立即应用当前的字体设置
+        applyFontSize(SettingsManager::instance()->rendererFontSize());
+
+        if (!m_pendingMarkdown.isEmpty()) {
+            renderMarkdown(m_pendingMarkdown);
+            m_pendingMarkdown.clear();
+        }
     }
 }
 
