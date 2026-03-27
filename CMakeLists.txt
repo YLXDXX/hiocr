@@ -21,7 +21,7 @@ add_subdirectory(src)
 
 install(TARGETS hiocr RUNTIME DESTINATION bin)
 install(FILES ${CMAKE_SOURCE_DIR}/hiocr.desktop DESTINATION share/applications)
-install(FILES ${CMAKE_SOURCE_DIR}/hiocr.png DESTINATION share/icons/hicolor/512x512/apps)
+install(FILES ${CMAKE_SOURCE_DIR}/hiocr.svg DESTINATION share/icons/hicolor/scalable/apps)
 
 if(NOT TARGET uninstall)
     configure_file(
