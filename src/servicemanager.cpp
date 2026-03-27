@@ -2,7 +2,6 @@
 #include "settingsmanager.h"
 #include <QDebug>
 
-// 【新增】Linux 特定头文件
 #ifdef Q_OS_LINUX
 #include <sys/types.h>
 #include <signal.h>
@@ -11,169 +10,158 @@
 
 ServiceManager::ServiceManager(QObject *parent) : QObject(parent)
 {
-    m_process = new QProcess(this);
-    connect(m_process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            this, &ServiceManager::onProcessFinished);
-    connect(m_process, &QProcess::errorOccurred, this, &ServiceManager::onProcessError);
-
+    // 【修复】初始化空闲计时器
     m_idleTimer = new QTimer(this);
-    m_idleTimer->setSingleShot(true);
+    m_idleTimer->setSingleShot(true); // 单次触发
     connect(m_idleTimer, &QTimer::timeout, this, &ServiceManager::onIdleTimeout);
 }
 
 ServiceManager::~ServiceManager()
 {
-    stopService();
+    stopAllServices();
 }
 
-void ServiceManager::ensureRunning()
+void ServiceManager::startService(const QString& id, const QString& command)
 {
-    if (m_process->state() == QProcess::Running || m_isStarting) {
-        emit serviceReady();
+    if (id.isEmpty() || command.isEmpty()) {
+        emit serviceError(id, "ID 或命令为空，无法启动");
         return;
     }
 
-    if (!SettingsManager::instance()->autoStartService()) {
-        emit serviceReady();
+    if (!m_processes.contains(id)) {
+        QProcess* process = new QProcess(this);
+        process->setProperty("serviceId", id);
+
+        // 连接进程启动信号
+        connect(process, &QProcess::started, this, [this, id](){
+            qDebug() << "Service process started successfully:" << id;
+            emit serviceStarted(id);
+            emit runningCountChanged(runningCount());
+        });
+
+        connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+                this, &ServiceManager::onProcessFinished);
+        connect(process, &QProcess::errorOccurred, this, &ServiceManager::onProcessError);
+        m_processes[id] = process;
+    }
+
+    QProcess* process = m_processes[id];
+
+    if (process->state() == QProcess::Running) {
+        emit serviceStarted(id);
         return;
     }
 
-    startServiceInternal();
-}
-
-void ServiceManager::startServiceInternal()
-{
-    QString command = SettingsManager::instance()->serviceStartCommand();
-    if (command.isEmpty()) {
-        emit serviceReady();
-        return;
-    }
-
-    qDebug() << "Starting OCR service with command:" << command;
-    m_isStarting = true;
-    m_manualStop = false;
+    qDebug() << "Starting service:" << id << command;
 
     #ifdef Q_OS_LINUX
-    m_process->setChildProcessModifier([]() {
-
-        // 保留进程组设置，这对 stopService() 中的 kill(-pid) 至关重要
+    process->setChildProcessModifier([](){
         setpgid(0, 0);
     });
     #endif
 
-    m_process->startCommand(command);
-
-    QTimer::singleShot(2000, this, [this](){
-        if (m_isStarting) {
-            m_isStarting = false;
-            if (m_process->state() == QProcess::Running) {
-                qDebug() << "Service process started successfully. PID:" << m_process->processId();
-                emit runningStateChanged(true);
-                emit serviceReady();
-            } else {
-                qWarning() << "Service process failed to stay running after 2s.";
-                emit errorOccurred("服务启动超时或命令执行失败，请检查命令配置。");
-                emit runningStateChanged(false);
-            }
-        }
-    });
+    process->startCommand(command);
 }
 
-void ServiceManager::stopService()
+void ServiceManager::stopService(const QString& id)
 {
-    if (m_process->state() != QProcess::NotRunning) {
-        qDebug() << "Stopping OCR service...";
+    if (!m_processes.contains(id)) return;
 
-        // 【关键修复】标记为主动停止，屏蔽后续的 Crashed 错误信号
-        m_manualStop = true;
+    QProcess* process = m_processes[id];
+    if (process->state() != QProcess::NotRunning) {
+        qDebug() << "Stopping service:" << id;
+
+        // 【新增】设置标记，表明这是主动停止，不是意外崩溃
+        process->setProperty("intentionallyKilled", true);
 
         #ifdef Q_OS_LINUX
-        pid_t pid = m_process->processId();
-        if (pid > 0) {
-            // 1. 向整个进程组发送 SIGTERM (优雅退出)
-            // 此时 PID == PGID (因为我们在 start 时设置了 setpgid)
-            if (kill(-pid, SIGTERM) == 0) {
-                // 等待进程退出
-                if (!m_process->waitForFinished(3000)) {
-                    // 2. 超时后发送 SIGKILL (强制退出)
-                    qDebug() << "Service still running, sending SIGKILL to group" << pid;
-                    kill(-pid, SIGKILL);
-                    m_process->waitForFinished(1000);
-                }
-            } else {
-                // 如果 kill 失败（极少情况），回退到 Qt 默认方式
-                qWarning() << "Failed to kill process group" << pid << ", fallback to terminate.";
-                m_process->terminate();
-                if (!m_process->waitForFinished(3000)) {
-                    m_process->kill();
-                    m_process->waitForFinished(1000);
-                }
-            }
+        pid_t pid = process->processId();
+        if (pid > 0) kill(-pid, SIGTERM);
+        if (!process->waitForFinished(3000)) {
+            if (pid > 0) kill(-pid, SIGKILL);
+            process->waitForFinished(1000);
         }
         #else
-        // Windows/其他平台使用默认方式
-        m_process->terminate();
-        if (!m_process->waitForFinished(3000)) {
-            m_process->kill();
-            m_process->waitForFinished(1000);
-        }
+        process->terminate();
+        if (!process->waitForFinished(3000)) process->kill();
         #endif
-        emit runningStateChanged(false);
     }
-    m_idleTimer->stop();
 }
 
-bool ServiceManager::isRunning() const
+void ServiceManager::stopAllServices()
 {
-    return m_process->state() == QProcess::Running;
+    qDebug() << "Stopping all services. Count:" << m_processes.size();
+    QStringList ids = m_processes.keys();
+    for (const QString& id : ids) {
+        stopService(id);
+    }
 }
 
+bool ServiceManager::isServiceRunning(const QString& id) const
+{
+    return m_processes.contains(id) && m_processes[id]->state() == QProcess::Running;
+}
+
+int ServiceManager::runningCount() const
+{
+    int count = 0;
+    for (auto it = m_processes.begin(); it != m_processes.end(); ++it) {
+        if (it.value()->state() == QProcess::Running) count++;
+    }
+    return count;
+}
+
+// 【修复】实现重置计时器逻辑
 void ServiceManager::resetIdleTimer()
 {
     int timeoutMinutes = SettingsManager::instance()->serviceIdleTimeout();
+
+    // 如果设置为 -1，则禁用空闲关闭功能
     if (timeoutMinutes < 0) {
         m_idleTimer->stop();
         return;
     }
+
+    // 重新启动计时器
     m_idleTimer->start(timeoutMinutes * 60 * 1000);
+}
+
+// 【修复】实现空闲超时槽函数
+void ServiceManager::onIdleTimeout()
+{
+    qDebug() << "Service idle timeout reached, stopping ALL services.";
+    stopAllServices();
+}
+
+// 【修复】修改错误处理，忽略主动杀死导致的错误
+void ServiceManager::onProcessError(QProcess::ProcessError error)
+{
+    QProcess* process = qobject_cast<QProcess*>(sender());
+    if (!process) return;
+
+    // 如果是主动终止导致的错误（如管道破裂等），忽略
+    if (process->property("intentionallyKilled").toBool()) {
+        return;
+    }
+
+    QString id = process->property("serviceId").toString();
+    emit serviceError(id, process->errorString());
 }
 
 void ServiceManager::onProcessFinished(int exitCode, QProcess::ExitStatus status)
 {
-    Q_UNUSED(exitCode);
+    QProcess* process = qobject_cast<QProcess*>(sender());
+    if (!process) return;
 
-    // 【修改】将判断提到最前面，如果是主动停止，直接返回，不输出任何日志
-    if (m_manualStop) {
-        m_manualStop = false; // 重置标志
-        return;
-    }
+    QString id = process->property("serviceId").toString();
 
-    qDebug() << "Service process finished. ExitStatus:" << status;
-    m_isStarting = false;
-
-    emit runningStateChanged(false);
-
+    // 【修复】只有非主动杀死且状态为崩溃时才报错
     if (status == QProcess::CrashExit) {
-        emit errorOccurred("服务进程意外崩溃。");
-    }
-}
-
-void ServiceManager::onProcessError(QProcess::ProcessError error)
-{
-    // 【修改】将判断提到最前面，如果是主动停止，直接返回，不输出任何日志
-    if (m_manualStop) {
-        return;
+        if (!process->property("intentionallyKilled").toBool()) {
+            emit serviceError(id, "服务崩溃");
+        }
     }
 
-    qDebug() << "Service process error:" << error << m_process->errorString();
-    m_isStarting = false;
-
-    emit errorOccurred(m_process->errorString());
-    emit runningStateChanged(false);
-}
-
-void ServiceManager::onIdleTimeout()
-{
-    qDebug() << "Service idle timeout reached, stopping service.";
-    stopService();
+    emit serviceStopped(id);
+    emit runningCountChanged(runningCount());
 }

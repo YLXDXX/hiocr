@@ -3,6 +3,7 @@
 
 #include <QMainWindow>
 #include <QProcess>
+#include "settingsmanager.h" // 包含完整定义
 
 class ImageViewWidget;
 class MarkdownRenderer;
@@ -10,7 +11,9 @@ class MarkdownSourceEditor;
 class PromptBar;
 class QShortcut;
 class MarkdownCopyBar;
-class QAction; // 前向声明
+class QAction;
+class QComboBox;
+class QPushButton;
 
 class MainWindow : public QMainWindow
 {
@@ -20,17 +23,22 @@ public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
-    // UI 公共接口
     void setImage(const QImage& image);
     void setRecognitionResult(const QString& markdown);
     void showError(const QString& message);
     void setBusy(bool busy);
     void setPrompt(const QString& prompt);
+
+    // 【新增】设置当前活动的提示词集合
+    void setCurrentPrompts(const QString& text, const QString& formula, const QString& table);
+
     void startAreaSelection(const QImage& fullImage);
     void copyToClipboard(const QString& text);
 
 public slots:
-    void updateStopServiceAction(bool isRunning);
+    void updateServiceSelector(const QList<ServiceProfile>& profiles, const QString& currentId);
+    void updateServiceControlButton(const QString& id, bool isRunning);
+    void updateStopAllAction(int runningCount);
     void onExternalProcessTriggered();
 
 signals:
@@ -39,7 +47,10 @@ signals:
     void areaSelected(const QRect& rect);
     void settingsTriggered();
     void screenshotRequested();
-    void stopServiceRequested(); // 【新增】停止服务信号
+    void stopServiceRequested();
+
+    void serviceSelected(const QString& id);
+    void serviceToggleRequested(const QString& id);
 
 protected:
     void keyPressEvent(QKeyEvent *event) override;
@@ -57,7 +68,6 @@ private:
     void setupConnections();
     void setupMenuBar();
 
-    // UI 组件
     ImageViewWidget* m_imageView;
     MarkdownRenderer* m_markdownRenderer;
     MarkdownSourceEditor* m_markdownSource;
@@ -65,8 +75,9 @@ private:
     QShortcut* m_pasteShortcut;
     MarkdownCopyBar* m_copyBar;
 
-    // 【新增】菜单项
-    QAction* m_stopServiceAction = nullptr;
+    QComboBox* m_serviceSelector = nullptr;
+    QPushButton* m_serviceToggleBtn = nullptr;
+    QAction* m_stopAllServicesAction = nullptr;
 };
 
 #endif // MAINWINDOW_H

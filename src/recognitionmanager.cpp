@@ -71,3 +71,11 @@ void RecognitionManager::onNetworkFinished(const QString& result, bool success, 
         emit recognitionFailed(error);
     }
 }
+
+// 【新增】实现 setServerUrl
+void RecognitionManager::setServerUrl(const QString& url)
+{
+    if (m_networkManager) {
+        m_networkManager->setServerUrl(url);
+    }
+}

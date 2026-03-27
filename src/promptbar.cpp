@@ -8,6 +8,11 @@ PromptBar::PromptBar(QWidget* parent) : QWidget(parent)
 {
     setupUi();
     setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+
+    // 初始化默认提示词
+    m_currentTextPrompt = SettingsManager::instance()->textPrompt();
+    m_currentFormulaPrompt = SettingsManager::instance()->formulaPrompt();
+    m_currentTablePrompt = SettingsManager::instance()->tablePrompt();
 }
 
 void PromptBar::setupUi()
@@ -54,13 +59,11 @@ void PromptBar::setPrompt(const QString& prompt)
 
 void PromptBar::setButtonsBusy(bool busy)
 {
-    // 禁用/启用所有操作按钮（文字、公式、表格、识别）
     m_textButton->setEnabled(!busy);
     m_formulaButton->setEnabled(!busy);
     m_tableButton->setEnabled(!busy);
     m_recognizeButton->setEnabled(!busy);
 
-    // 改变按钮背景色以提供视觉反馈（可根据需要调整颜色）
     if (busy) {
         QString busyStyle = "background-color: #e0e0e0; color: #a0a0a0;";
         m_textButton->setStyleSheet(busyStyle);
@@ -75,23 +78,28 @@ void PromptBar::setButtonsBusy(bool busy)
     }
 }
 
+// 【新增】实现
+void PromptBar::setCurrentPrompts(const QString& text, const QString& formula, const QString& table)
+{
+    m_currentTextPrompt = text;
+    m_currentFormulaPrompt = formula;
+    m_currentTablePrompt = table;
+}
+
 void PromptBar::onTextButton()
 {
-    QString prompt = SettingsManager::instance()->textPrompt();
-    setPrompt(prompt);
-    emit autoRecognizeRequested(prompt);
+    setPrompt(m_currentTextPrompt);
+    emit autoRecognizeRequested(m_currentTextPrompt);
 }
 
 void PromptBar::onFormulaButton()
 {
-    QString prompt = SettingsManager::instance()->formulaPrompt();
-    setPrompt(prompt);
-    emit autoRecognizeRequested(prompt);
+    setPrompt(m_currentFormulaPrompt);
+    emit autoRecognizeRequested(m_currentFormulaPrompt);
 }
 
 void PromptBar::onTableButton()
 {
-    QString prompt = SettingsManager::instance()->tablePrompt();
-    setPrompt(prompt);
-    emit autoRecognizeRequested(prompt);
+    setPrompt(m_currentTablePrompt);
+    emit autoRecognizeRequested(m_currentTablePrompt);
 }

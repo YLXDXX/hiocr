@@ -32,7 +32,8 @@ namespace Constants {
     const bool DEFAULT_AUTO_EXTERNAL_PROCESS_BEFORE_COPY = false;
 
     // --- 服务管理设置 ---
-    const bool DEFAULT_AUTO_START_SERVICE = false; // 默认不自动启动，避免干扰在线服务用户
+    // 【修改】默认开启自动启动，提升用户体验
+    const bool DEFAULT_AUTO_START_SERVICE = true;
     const QString DEFAULT_SERVICE_START_COMMAND = "";
     const int DEFAULT_SERVICE_IDLE_TIMEOUT = 10; // 默认10分钟
 
@@ -52,6 +53,23 @@ namespace Constants {
     // 【新增】字体大小默认值
     const int DEFAULT_RENDERER_FONT_SIZE = 16;   // Markdown 渲染区默认字体大小
     const int DEFAULT_SOURCE_EDITOR_FONT_SIZE = 16; // Markdown 源码编辑区默认字体大小
+
+
+    // --- 新增：默认服务配置 ---
+    // 提供两个默认服务配置示例
+    const QString DEFAULT_SERVICE_1_NAME = "本地 OCR 服务";
+    const QString DEFAULT_SERVICE_1_CMD = "llama-server -m /path/to/model.gguf --port 8080";
+    const QString DEFAULT_SERVICE_1_URL = "http://localhost:8080/v1/chat/completions";
+
+    const QString DEFAULT_SERVICE_2_NAME = "远程 API";
+    const QString DEFAULT_SERVICE_2_CMD = ""; // 远程服务通常不需要启动命令
+    const QString DEFAULT_SERVICE_2_URL = "https://api.example.com/v1/chat/completions";
+
+    // 服务切换模式: 0=仅保留一个, 1=保留全部运行
+    const int DEFAULT_SERVICE_SWITCH_MODE = 0;
+
+    // 【新增】默认本地服务 ID 的配置键（仅用于初始化，实际存储在 settings 中）
+    const QString DEFAULT_LOCAL_SERVICE_ID = "";
 }
 
 #endif // CONSTANTS_H

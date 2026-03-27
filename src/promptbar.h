@@ -14,14 +14,15 @@ public:
 
     QString prompt() const;
     void setPrompt(const QString& prompt);
-
-    // 设置所有操作按钮的忙碌状态（禁用并改变样式）
     void setButtonsBusy(bool busy);
+
+    // 【新增】设置当前服务的提示词
+    void setCurrentPrompts(const QString& text, const QString& formula, const QString& table);
 
 signals:
     void promptChanged(const QString& prompt);
-    void recognizeRequested();              // 点击“识别”按钮时发出
-    void autoRecognizeRequested(const QString& prompt);  // 点击文字/公式/表格按钮时发出
+    void recognizeRequested();
+    void autoRecognizeRequested(const QString& prompt);
 
 private slots:
     void onTextButton();
@@ -36,6 +37,11 @@ private:
     QPushButton* m_textButton;
     QPushButton* m_formulaButton;
     QPushButton* m_tableButton;
+
+    // 【新增】存储当前服务的提示词
+    QString m_currentTextPrompt;
+    QString m_currentFormulaPrompt;
+    QString m_currentTablePrompt;
 };
 
 #endif // PROMPTBAR_H

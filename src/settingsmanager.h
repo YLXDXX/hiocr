@@ -4,6 +4,22 @@
 #include <QObject>
 #include <QSettings>
 #include <QString>
+#include <QList>
+
+
+// 【新增】服务配置结构体
+struct ServiceProfile {
+    QString id;             // 唯一标识
+    QString name;           // 显示名称
+    QString startCommand;   // 启动命令
+    QString serverUrl;      // 服务地址
+    QString textPrompt;
+    QString formulaPrompt;
+    QString tablePrompt;
+
+    // 辅助函数：判断是否为空（即无配置项）
+    bool isEmpty() const { return id.isEmpty() && name.isEmpty(); }
+};
 
 class SettingsManager : public QObject
 {
@@ -93,12 +109,40 @@ public:
     int sourceEditorFontSize() const;
     void setSourceEditorFontSize(int size);
 
+
+    // 【新增】服务管理接口
+    enum ServiceSwitchMode {
+        SingleService = 0,  // 仅保留一个
+        ParallelServices = 1 // 保留全部
+    };
+
+    QList<ServiceProfile> serviceProfiles() const;
+    void setServiceProfiles(const QList<ServiceProfile>& profiles);
+
+    ServiceSwitchMode serviceSwitchMode() const;
+    void setServiceSwitchMode(ServiceSwitchMode mode);
+
+    // 当前激活的服务 ID（空字符串表示使用全局设置）
+    QString currentServiceId() const;
+    void setCurrentServiceId(const QString& id);
+
+    // 【新增】默认本地服务 ID（用于自动启动时切换）
+    QString defaultLocalServiceId() const;
+    void setDefaultLocalServiceId(const QString& id);
+
+    // 获取指定 ID 的服务配置
+    ServiceProfile getServiceProfile(const QString& id) const;
+
 signals:
+    void serviceProfilesChanged();
+    void currentServiceIdChanged(const QString& id);
+    void defaultLocalServiceIdChanged(const QString& id);
+
     void serverUrlChanged(const QString& url);
     void shortcutsChanged();
     void autoUseLastPromptChanged(bool enabled);
     void displayMathEnvironmentChanged(const QString& env);
-    void mathFontChanged(const QString& font); // 【新增】
+    void mathFontChanged(const QString& font);
     void externalProcessorCommandChanged(const QString& cmd);
 
     void autoCopyResultChanged(bool enabled);

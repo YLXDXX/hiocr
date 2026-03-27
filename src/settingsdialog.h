@@ -1,6 +1,8 @@
 #ifndef SETTINGSDIALOG_H
 #define SETTINGSDIALOG_H
+
 #include "shortcutedit.h"
+#include "settingsmanager.h"
 
 #include <QDialog>
 #include <QLineEdit>
@@ -8,8 +10,8 @@
 #include <QPushButton>
 #include <QComboBox>
 #include <QSpinBox>
-#include <QPlainTextEdit> // 引入多行编辑框
-
+#include <QPlainTextEdit>
+#include <QListWidget>
 
 class SettingsDialog : public QDialog
 {
@@ -22,26 +24,29 @@ private slots:
     void onSaveClicked();
     void onRestoreDefaults();
 
+    void onAddService();
+    void onRemoveService();
+    void onServiceDetailChanged();
+
 private:
     void loadSettings();
     void setupUi();
+    void populateServiceList();
+    void saveCurrentServiceToTemp(int row);
 
     QLineEdit* m_serverUrlEdit;
     QLineEdit* m_externalProcessorEdit;
 
-    // 快捷键编辑
     ShortcutEdit* m_scScreenshotEdit;
     ShortcutEdit* m_scTextEdit;
     ShortcutEdit* m_scFormulaEdit;
     ShortcutEdit* m_scTableEdit;
-    ShortcutEdit* m_scExternalProcessEdit; // 【新增】
+    ShortcutEdit* m_scExternalProcessEdit;
 
-    // 行为设置
     QCheckBox* m_autoUseLastPromptCheck;
 
-    // 显示设置
     QComboBox* m_displayMathCombo;
-    QComboBox* m_mathFontCombo; // 【新增】字体选择框
+    QComboBox* m_mathFontCombo;
 
     QPushButton* m_saveBtn;
     QPushButton* m_defaultBtn;
@@ -49,26 +54,37 @@ private:
     QCheckBox* m_autoCopyCheck;
     QCheckBox* m_autoRecognizeCheck;
 
-    QCheckBox* m_autoStartServiceCheck;
-    QLineEdit* m_serviceStartCommandEdit;
-    QSpinBox* m_serviceIdleTimeoutSpin; // 需要包含 QSpinBox
+    // 【修改】服务管理控件
+    QComboBox* m_serviceSwitchModeCombo;
+    QListWidget* m_serviceListWidget;
+    QLineEdit* m_serviceNameEdit;
+    QLineEdit* m_serviceCommandEdit;
+    QLineEdit* m_serviceUrlEdit;
+    QLineEdit* m_serviceTextPromptEdit;
+    QLineEdit* m_serviceFormulaPromptEdit;
+    QLineEdit* m_serviceTablePromptEdit;
+    QPushButton* m_addServiceBtn;
+    QPushButton* m_removeServiceBtn;
 
-
-    // 【新增】请求参数编辑框
     QPlainTextEdit* m_requestParamsEdit;
 
-
-    // 提示词编辑
-    QLineEdit* m_textPromptEdit;
-    QLineEdit* m_formulaPromptEdit;
-    QLineEdit* m_tablePromptEdit;
+    // 全局默认提示词
+    QLineEdit* m_globalTextPromptEdit;
+    QLineEdit* m_globalFormulaPromptEdit;
+    QLineEdit* m_globalTablePromptEdit;
 
     QCheckBox* m_autoExternalProcessCheck;
 
-    // 【新增】字体大小控件
     QSpinBox* m_rendererFontSpin;
     QSpinBox* m_sourceEditorFontSpin;
+    QSpinBox* m_serviceIdleTimeoutSpin;
 
+    // 【新增】自动启动服务开关
+    QCheckBox* m_autoStartServiceCheck;
+
+    // 临时数据
+    QList<ServiceProfile> m_tempServiceProfiles;
+    int m_currentEditingServiceIndex = -1;
 };
 
 #endif // SETTINGSDIALOG_H

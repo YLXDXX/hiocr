@@ -5,7 +5,7 @@
 #include <QObject>
 #include <QImage>
 #include <QClipboard>
-#include <QLocalServer> // 【新增】单实例通信服务端
+#include <QLocalServer>
 
 class MainWindow;
 class ScreenshotManager;
@@ -13,6 +13,7 @@ class RecognitionManager;
 class SettingsManager;
 class TrayManager;
 class ShortcutHandler;
+class NetworkManager; // 【新增】
 
 class AppController : public QObject
 {
@@ -22,52 +23,47 @@ public:
     explicit AppController(QObject *parent = nullptr);
     ~AppController();
 
-    // 初始化控制器，建立所有连接
     void initialize();
-
-    // 获取主窗口实例（用于 main.cpp 显示）
     MainWindow* mainWindow() const;
-
-    // 【新增】处理外部传入的命令行参数
     void handleCommandLineArguments(const QString& imagePath, const QString& resultText);
 
 public slots:
-    // --- 动作触发入口 ---
     void onRecognitionFinished(const QString& markdown);
-    void takeScreenshot();             // 通用截图
-    void takeTextRecognizeScreenshot(); // 文字识别截图
-    void takeFormulaRecognizeScreenshot(); // 公式识别截图
-    void takeTableRecognizeScreenshot(); // 表格识别截图
+    void takeScreenshot();
+    void takeTextRecognizeScreenshot();
+    void takeFormulaRecognizeScreenshot();
+    void takeTableRecognizeScreenshot();
     void showWindow();
     void quitApp();
 
 signals:
-    // --- 数据更新信号（通知 UI） ---
     void imageChanged(const QImage& image);
     void recognitionResultReady(const QString& markdown);
     void recognitionFailed(const QString& error);
     void busyStateChanged(bool busy);
-
-    // 内部信号，用于协调异步流程
     void requestAreaSelection(const QImage& fullImage);
 
 private slots:
-    // --- 内部逻辑处理 ---
     void onScreenshotCaptured(const QImage& image);
     void onScreenshotFailed(const QString& error);
     void onAreaSelected(const QRect& rect);
     void onSettingsChanged();
 
-    // 【新增】单实例通信槽函数
+    // 【新增】服务管理相关槽函数
+    void onServiceSelected(const QString& id);
+    void toggleService(const QString& id);
+
     void onNewInstanceConnected();
 
 private:
     void setupManagers();
     void setupConnections();
     void applySettings();
-    void setupSingleInstance(); // 【新增】设置单实例监听
+    void setupSingleInstance();
 
-    // Manager 实例
+    // 【新增】应用服务配置
+    void applyServiceConfig(const QString& serviceId);
+
     MainWindow* m_mainWindow = nullptr;
     ScreenshotManager* m_screenshotManager = nullptr;
     RecognitionManager* m_recognitionManager = nullptr;
@@ -76,16 +72,17 @@ private:
     ShortcutHandler* m_shortcutHandler = nullptr;
     ServiceManager* m_serviceManager = nullptr;
 
-    QLocalServer* m_localServer = nullptr; // 【新增】
+    QLocalServer* m_localServer = nullptr;
 
-    // 临时状态
     QImage m_pendingFullScreenshot;
     QString m_pendingPromptOverride;
 
-    // 用于暂存识别请求（当服务正在启动时）
     QString m_pendingPrompt;
     QString m_pendingBase64;
     bool m_retryAfterServiceStart = false;
+
+    // 【新增】重试控制标志
+    bool m_isRetryingAfterSwitch = false;
 };
 
 #endif // APPCONTROLLER_H
