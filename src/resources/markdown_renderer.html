@@ -76,6 +76,15 @@
                 }
             });
 
+            // 【新增】HTML 转义辅助函数
+            // 防止公式内的特殊字符（如 < > &）被浏览器解析为 HTML 标签，破坏公式结构
+            function escapeHtml(text) {
+                return text
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;");
+            }
+
             // 2. 公式扩展定义
 
             // 块级公式扩展 (处理 $$...$$)
@@ -100,7 +109,7 @@
                     return false;
                 },
                 renderer(token) {
-                    return token.text;
+                    return escapeHtml(token.text); // 修复：转义输出
                 }
             };
 
@@ -122,22 +131,19 @@
                     return false;
                 },
                 renderer(token) {
-                    return token.text;
+                    return escapeHtml(token.text); // 修复：转义输出
                 }
             };
 
-            // 【修正】块级公式扩展 (处理 \[...\])
+            // 块级公式扩展 (处理 \[...\])
             const blockMathBracketExtension = {
                 name: 'blockMathBracket',
                 level: 'block',
                 start(src) {
-                    // 匹配行首的 \[
                     const match = src.match(/^ {0,3}\\\[/m);
                     return match ? match.index : -1;
                 },
                 tokenizer(src, tokens) {
-                    // 正确的正则：\\\ 匹配反斜杠，\[ 匹配 [
-                    // 移除了多余的空格限制，支持 \[ 后直接跟公式
                     const rule = /^ {0,3}\\\[[\s\S]+?\\\](?:\n+|$)/;
                     const match = rule.exec(src);
                     if (match) {
@@ -151,17 +157,16 @@
                     return false;
                 },
                 renderer(token) {
-                    return token.text;
+                    return escapeHtml(token.text); // 修复：转义输出
                 }
             };
 
-            // 【修正】行内公式扩展 (处理 \(...\))
+            // 行内公式扩展 (处理 \(...\))
             const inlineMathParenExtension = {
                 name: 'inlineMathParen',
                 level: 'inline',
                 start(src) { return src.indexOf('\\('); },
                 tokenizer(src, tokens) {
-                    // 正确的正则：\\\ 匹配反斜杠，\( 匹配 (
                     const match = src.match(/^\\\(([\s\S]+?)\\\)/);
                     if (match) {
                         return {
@@ -174,7 +179,7 @@
                     return false;
                 },
                 renderer(token) {
-                    return token.text;
+                    return escapeHtml(token.text); // 修复：转义输出
                 }
             };
 
