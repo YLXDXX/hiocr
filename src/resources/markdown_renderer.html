@@ -79,7 +79,6 @@
             // 2. 公式扩展定义
 
             // 块级公式扩展 (处理 $$...$$)
-            // name 和 token.type 必须保持一致，否则 marked 会报错找不到渲染器
             const blockMathExtension = {
                 name: 'blockMath',
                 level: 'block',
@@ -92,7 +91,7 @@
                     const match = rule.exec(src);
                     if (match) {
                         return {
-                            type: 'blockMath', // 必须匹配 name
+                            type: 'blockMath',
                             raw: match[0],
                             text: match[0],
                             display: true
@@ -114,7 +113,59 @@
                     const match = src.match(/^\$((?:[^\$]|\\\$)+?)\$/);
                     if (match) {
                         return {
-                            type: 'inlineMath', // 必须匹配 name
+                            type: 'inlineMath',
+                            raw: match[0],
+                            text: match[0],
+                            display: false
+                        };
+                    }
+                    return false;
+                },
+                renderer(token) {
+                    return token.text;
+                }
+            };
+
+            // 【修正】块级公式扩展 (处理 \[...\])
+            const blockMathBracketExtension = {
+                name: 'blockMathBracket',
+                level: 'block',
+                start(src) {
+                    // 匹配行首的 \[
+                    const match = src.match(/^ {0,3}\\\[/m);
+                    return match ? match.index : -1;
+                },
+                tokenizer(src, tokens) {
+                    // 正确的正则：\\\ 匹配反斜杠，\[ 匹配 [
+                    // 移除了多余的空格限制，支持 \[ 后直接跟公式
+                    const rule = /^ {0,3}\\\[[\s\S]+?\\\](?:\n+|$)/;
+                    const match = rule.exec(src);
+                    if (match) {
+                        return {
+                            type: 'blockMathBracket',
+                            raw: match[0],
+                            text: match[0],
+                            display: true
+                        };
+                    }
+                    return false;
+                },
+                renderer(token) {
+                    return token.text;
+                }
+            };
+
+            // 【修正】行内公式扩展 (处理 \(...\))
+            const inlineMathParenExtension = {
+                name: 'inlineMathParen',
+                level: 'inline',
+                start(src) { return src.indexOf('\\('); },
+                tokenizer(src, tokens) {
+                    // 正确的正则：\\\ 匹配反斜杠，\( 匹配 (
+                    const match = src.match(/^\\\(([\s\S]+?)\\\)/);
+                    if (match) {
+                        return {
+                            type: 'inlineMathParen',
                             raw: match[0],
                             text: match[0],
                             display: false
@@ -128,7 +179,12 @@
             };
 
             // 注册扩展
-            marked.use({ extensions: [blockMathExtension, inlineMathExtension] });
+            marked.use({ extensions: [
+                blockMathExtension,
+                inlineMathExtension,
+                blockMathBracketExtension,
+                inlineMathParenExtension
+            ]});
 
             // 3. 字体切换函数 (由 Qt 调用)
             function updateMathFont(fontName) {
