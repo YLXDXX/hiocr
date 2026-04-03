@@ -311,3 +311,33 @@ void SettingsManager::setRendererFontSize(int size) { if (rendererFontSize() != 
 
 int SettingsManager::sourceEditorFontSize() const { return m_settings.value("display/source_editor_font_size", Constants::DEFAULT_SOURCE_EDITOR_FONT_SIZE).toInt(); }
 void SettingsManager::setSourceEditorFontSize(int size) { if (sourceEditorFontSize() != size) { m_settings.setValue("display/source_editor_font_size", size); emit sourceEditorFontSizeChanged(size); } }
+
+
+// 【新增】实现
+QString SettingsManager::textProcessorCommand() const {
+    return m_settings.value("processor/text_cmd", "").toString();
+}
+void SettingsManager::setTextProcessorCommand(const QString& cmd) {
+    m_settings.setValue("processor/text_cmd", cmd);
+}
+
+QString SettingsManager::formulaProcessorCommand() const {
+    return m_settings.value("processor/formula_cmd", "").toString();
+}
+void SettingsManager::setFormulaProcessorCommand(const QString& cmd) {
+    m_settings.setValue("processor/formula_cmd", cmd);
+}
+
+QString SettingsManager::tableProcessorCommand() const {
+    return m_settings.value("processor/table_cmd", "").toString();
+}
+void SettingsManager::setTableProcessorCommand(const QString& cmd) {
+    m_settings.setValue("processor/table_cmd", cmd);
+}
+
+QString SettingsManager::pureMathProcessorCommand() const {
+    return m_settings.value("processor/pure_math_cmd", "").toString();
+}
+void SettingsManager::setPureMathProcessorCommand(const QString& cmd) {
+    m_settings.setValue("processor/pure_math_cmd", cmd);
+}

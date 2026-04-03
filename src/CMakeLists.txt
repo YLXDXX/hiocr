@@ -3,13 +3,15 @@
 set(LIB_SOURCES
     networkmanager.cpp
     imageprocessor.cpp
-    settingsmanager.cpp      # 保留在这里，因为它只用到 QSettings (QtCore)
+    settingsmanager.cpp
+    copyprocessor.cpp
 )
 
 set(LIB_HEADERS
     networkmanager.h
     imageprocessor.h
-    settingsmanager.h        # 保留在这里
+    settingsmanager.h
+    copyprocessor.h
 )
 
 add_library(hiocr_lib STATIC ${LIB_SOURCES} ${LIB_HEADERS})
@@ -37,6 +39,7 @@ set(APP_SOURCES
     markdowncopybar.cpp
     servicemanager.cpp
     shortcutedit.cpp
+    singleapplication.cpp
 )
 
 set(APP_HEADERS
@@ -56,6 +59,7 @@ set(APP_HEADERS
     markdowncopybar.h
     servicemanager.h
     shortcutedit.h
+    singleapplication.h
 )
 
 # 如果 KF6GlobalAccel 可用，则添加 KGlobalAccel 支持

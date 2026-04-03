@@ -1,11 +1,9 @@
 #ifndef APPCONTROLLER_H
 #define APPCONTROLLER_H
 #include "servicemanager.h"
-
+#include "copyprocessor.h" // 引入
 #include <QObject>
 #include <QImage>
-#include <QClipboard>
-#include <QLocalServer>
 
 class MainWindow;
 class ScreenshotManager;
@@ -13,7 +11,7 @@ class RecognitionManager;
 class SettingsManager;
 class TrayManager;
 class ShortcutHandler;
-class NetworkManager; // 【新增】
+class SingleApplication; // 【新增】
 
 class AppController : public QObject
 {
@@ -25,6 +23,7 @@ public:
 
     void initialize();
     MainWindow* mainWindow() const;
+    // 【修改】参数改为结构体或分离参数，方便 SingleApplication 调用
     void handleCommandLineArguments(const QString& imagePath, const QString& resultText);
 
 public slots:
@@ -53,7 +52,7 @@ private slots:
     void onServiceSelected(const QString& id);
     void toggleService(const QString& id);
 
-    void onNewInstanceConnected();
+    void onSingleInstanceMessageReceived(const QByteArray& message); // 【新增】
 
 private:
     void setupManagers();
@@ -71,8 +70,6 @@ private:
     TrayManager* m_trayManager = nullptr;
     ShortcutHandler* m_shortcutHandler = nullptr;
     ServiceManager* m_serviceManager = nullptr;
-
-    QLocalServer* m_localServer = nullptr;
 
     QImage m_pendingFullScreenshot;
     QString m_pendingPromptOverride;

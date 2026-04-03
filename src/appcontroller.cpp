@@ -7,6 +7,7 @@
 #include "shortcuthandler.h"
 #include "imageprocessor.h"
 #include "settingsdialog.h"
+#include "singleapplication.h" // 【新增】
 
 #include <QApplication>
 #include <QTimer>
@@ -18,11 +19,7 @@
 
 static const QString SINGLE_INSTANCE_KEY = "hiocr_single_instance_socket";
 
-AppController::AppController(QObject *parent) : QObject(parent)
-, m_retryAfterServiceStart(false)
-, m_isRetryingAfterSwitch(false)
-{
-}
+AppController::AppController(QObject *parent) : QObject(parent) { /* ... */ }
 
 AppController::~AppController()
 {
@@ -30,16 +27,16 @@ AppController::~AppController()
         delete m_mainWindow;
         m_mainWindow = nullptr;
     }
-    if (m_localServer) {
-        m_localServer->close();
-        delete m_localServer;
-    }
 }
 
 void AppController::initialize()
 {
     setupManagers();
-    setupSingleInstance();
+    // 连接单实例消息
+    SingleApplication* singleApp = qobject_cast<SingleApplication*>(qApp->property("singleApp").value<QObject*>());
+    if (singleApp) {
+        connect(singleApp, &SingleApplication::messageReceived, this, &AppController::onSingleInstanceMessageReceived);
+    }
     setupConnections();
     applySettings();
 
@@ -109,36 +106,6 @@ void AppController::setupManagers()
     m_serviceManager = new ServiceManager(this);
 }
 
-void AppController::setupSingleInstance()
-{
-    m_localServer = new QLocalServer(this);
-    connect(m_localServer, &QLocalServer::newConnection, this, &AppController::onNewInstanceConnected);
-
-    if (!m_localServer->listen(SINGLE_INSTANCE_KEY)) {
-        QLocalServer::removeServer(SINGLE_INSTANCE_KEY);
-        m_localServer->listen(SINGLE_INSTANCE_KEY);
-    }
-}
-
-void AppController::onNewInstanceConnected()
-{
-    QLocalSocket* socket = m_localServer->nextPendingConnection();
-    if (!socket) return;
-
-    if (socket->waitForReadyRead(500)) {
-        QByteArray data = socket->readAll();
-        QJsonParseError err;
-        QJsonDocument doc = QJsonDocument::fromJson(data, &err);
-
-        if (err.error == QJsonParseError::NoError && doc.isObject()) {
-            QJsonObject obj = doc.object();
-            QString image = obj["image"].toString();
-            QString result = obj["result"].toString();
-            handleCommandLineArguments(image, result);
-        }
-    }
-    socket->deleteLater();
-}
 
 void AppController::setupConnections()
 {
@@ -158,10 +125,9 @@ void AppController::setupConnections()
     connect(m_trayManager, &TrayManager::quitRequested, this, &AppController::quitApp);
 
     // MainWindow UI -> Controller
+    // 【修复】直接调用 RecognitionManager，不要尝试在这里组装网络请求
     connect(m_mainWindow, &MainWindow::recognizeRequested, this, [this](const QString& prompt, const QString& base64Img){
-        m_pendingPrompt = prompt;
-        m_pendingBase64 = base64Img;
-        m_recognitionManager->recognize(m_pendingPrompt, m_pendingBase64);
+        m_recognitionManager->recognize(prompt, base64Img);
     });
 
     connect(m_mainWindow, &MainWindow::imagePasted, this, [this](const QImage& img){
@@ -184,7 +150,7 @@ void AppController::setupConnections()
     connect(m_screenshotManager, &ScreenshotManager::screenshotCaptured, this, &AppController::onScreenshotCaptured);
     connect(m_screenshotManager, &ScreenshotManager::screenshotFailed, this, &AppController::onScreenshotFailed);
 
-    // RecognitionManager
+    // RecognitionManager -> Controller
     connect(m_recognitionManager, &RecognitionManager::recognitionFinished, this, [this](const QString& markdown){
         m_isRetryingAfterSwitch = false;
         m_serviceManager->resetIdleTimer();
@@ -274,10 +240,9 @@ void AppController::setupConnections()
     connect(m_settings, &SettingsManager::shortcutsChanged, this, &AppController::onSettingsChanged);
     connect(m_settings, &SettingsManager::autoUseLastPromptChanged, m_recognitionManager, &RecognitionManager::setAutoUseLastPrompt);
 
-    // 【新增】监听服务列表配置变化，当用户在设置界面修改端口后保存时触发
+    // 【新增】监听服务列表配置变化
     connect(m_settings, &SettingsManager::serviceProfilesChanged, this, [this](){
         m_mainWindow->updateServiceSelector(m_settings->serviceProfiles(), m_settings->currentServiceId());
-        // 强制重新加载当前服务的配置
         QString currentId = m_settings->currentServiceId();
         if (!currentId.isEmpty()) {
             applyServiceConfig(currentId);
@@ -289,14 +254,11 @@ void AppController::setupConnections()
         m_mainWindow->updateServiceControlButton(id, true);
         m_mainWindow->updateStopAllAction(m_serviceManager->runningCount());
 
-        // 只有当我们是因重试而启动服务时，才触发重试逻辑
         if (m_retryAfterServiceStart && m_settings->currentServiceId() == id) {
             qDebug() << "Service started, retrying recognition in 2 seconds...";
             QTimer::singleShot(2000, this, [this](){
                 if (!m_pendingBase64.isEmpty() && !m_pendingPrompt.isEmpty()) {
-                    // 再次确保配置正确
                     applyServiceConfig(m_settings->currentServiceId());
-
                     m_recognitionManager->recognize(m_pendingPrompt, m_pendingBase64);
                     m_pendingBase64.clear();
                     m_pendingPrompt.clear();
@@ -519,5 +481,17 @@ void AppController::onRecognitionFinished(const QString& markdown)
         if (!markdown.isEmpty()) {
             m_mainWindow->copyToClipboard(markdown);
         }
+    }
+}
+
+void AppController::onSingleInstanceMessageReceived(const QByteArray& message)
+{
+    QJsonParseError err;
+    QJsonDocument doc = QJsonDocument::fromJson(message, &err);
+    if (err.error == QJsonParseError::NoError && doc.isObject()) {
+        QJsonObject obj = doc.object();
+        QString image = obj["image"].toString();
+        QString result = obj["result"].toString();
+        handleCommandLineArguments(image, result);
     }
 }

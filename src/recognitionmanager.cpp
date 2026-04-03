@@ -1,5 +1,6 @@
 #include "recognitionmanager.h"
 #include "settingsmanager.h"
+#include "networkmanager.h"
 
 RecognitionManager::RecognitionManager(QObject* parent) : QObject(parent)
 {
@@ -10,7 +11,7 @@ RecognitionManager::RecognitionManager(QObject* parent) : QObject(parent)
     m_debounceTimer->setSingleShot(true);
     connect(m_debounceTimer, &QTimer::timeout, this, &RecognitionManager::onDebounceTimeout);
 
-    m_lastPrompt = "文字识别:"; // 默认提示词
+    m_lastPrompt = "文字识别:";
 }
 
 void RecognitionManager::recognize(const QString& prompt, const QString& base64Image) {
@@ -20,7 +21,14 @@ void RecognitionManager::recognize(const QString& prompt, const QString& base64I
     m_isBusy = true;
     emit busyStateChanged(true);
 
-    m_networkManager->sendRequest(base64Image, prompt);
+    // 构建请求配置
+    RequestConfig config;
+    config.base64Image = base64Image;
+    config.prompt = prompt;
+    config.serverUrl = m_serverUrl; // 使用内部缓存的 URL
+
+    // 发送请求
+    m_networkManager->sendRequest(config);
 }
 
 void RecognitionManager::onImageChanged(const QString& base64Image) {
@@ -76,6 +84,8 @@ void RecognitionManager::onNetworkFinished(const QString& result, bool success, 
 void RecognitionManager::setServerUrl(const QString& url)
 {
     if (m_networkManager) {
-        m_networkManager->setServerUrl(url);
+        // NetworkManager 不再需要单独设置 URL，通过 config 传入
+        // 但为了保持缓存，我们在 Manager 里存一份
+        m_serverUrl = url;
     }
 }

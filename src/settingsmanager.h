@@ -1,6 +1,7 @@
 #ifndef SETTINGSMANAGER_H
 #define SETTINGSMANAGER_H
 
+#include "copyprocessor.h" // 引入 ContentType 定义
 #include <QObject>
 #include <QSettings>
 #include <QString>
@@ -132,6 +133,20 @@ public:
 
     // 获取指定 ID 的服务配置
     ServiceProfile getServiceProfile(const QString& id) const;
+
+    // 【新增】针对不同类型的处理脚本配置接口 (为 TODO 准备)
+    QString textProcessorCommand() const;
+    void setTextProcessorCommand(const QString& cmd);
+
+    QString formulaProcessorCommand() const;
+    void setFormulaProcessorCommand(const QString& cmd);
+
+    QString tableProcessorCommand() const;
+    void setTableProcessorCommand(const QString& cmd);
+
+    // 【新增】纯数学公式脚本接口 (TODO 逻辑)
+    QString pureMathProcessorCommand() const;
+    void setPureMathProcessorCommand(const QString& cmd);
 
 signals:
     void serviceProfilesChanged();

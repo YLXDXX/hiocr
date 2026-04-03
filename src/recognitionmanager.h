@@ -44,6 +44,7 @@ private:
     QString m_tempPromptOverride;
     bool m_autoUseLastPrompt = true;
     bool m_isBusy = false;
+    QString m_serverUrl; // 【新增】用于缓存当前的 URL
 };
 
 #endif // RECOGNITIONMANAGER_H

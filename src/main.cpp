@@ -7,7 +7,7 @@
 #include <QFileInfo>
 #include "appcontroller.h"
 #include "mainwindow.h"
-
+#include "singleapplication.h" // 【新增】
 #include <signal.h>
 #include <unistd.h>
 #include <sys/socket.h>
@@ -105,7 +105,12 @@ int main(int argc, char *argv[])
     qputenv("QT_NO_GLOBAL_STATUSTRAY", "1");
     qputenv("XDG_ACTIVATION_TOKEN", "hiocr");
 
-    QApplication app(argc, argv);
+    // 【修改】使用新的构造函数签名 (argc, argv, key)
+    SingleApplication app(argc, argv, SINGLE_INSTANCE_KEY);
+
+    // 将实例保存到全局属性
+    app.setProperty("singleApp", QVariant::fromValue(&app));
+
     app.setQuitOnLastWindowClosed(false);
 
     QGuiApplication::setDesktopFileName("hiocr");
@@ -156,33 +161,13 @@ int main(int argc, char *argv[])
     QString imagePath = parser.value(imageOption);
     QString resultText = parser.value(resultOption);
 
-    // 2. 尝试连接现有实例
-    if (trySendToExistingInstance(imagePath, resultText)) {
+    // 2. 检查单实例
+    if (app.isRunning()) {
+        QJsonObject obj;
+        obj["image"] = imagePath;
+        obj["result"] = resultText;
+        app.sendMessage(QJsonDocument(obj).toJson());
         return 0;
-    }
-
-    // 3. 继续主程序启动逻辑
-    if (!imagePath.isEmpty()) {
-        QFileInfo fileInfo(imagePath);
-        if (fileInfo.isRelative()) {
-            imagePath = fileInfo.absoluteFilePath();
-        }
-    }
-
-    if (::socketpair(AF_UNIX, SOCK_STREAM, 0, sigintFd) == 0) {
-        struct sigaction sa;
-        sa.sa_handler = intSignalHandler;
-        sigemptyset(&sa.sa_mask);
-        sa.sa_flags = 0;
-        sigaction(SIGINT, &sa, nullptr);
-
-        QSocketNotifier *notifier = new QSocketNotifier(sigintFd[1], QSocketNotifier::Read, &app);
-        QObject::connect(notifier, &QSocketNotifier::activated, [&]() {
-            char tmp;
-            ::read(sigintFd[1], &tmp, sizeof(tmp));
-            qDebug() << "Caught Ctrl+C, quitting gracefully..."; // 仅在 verbose 模式可见
-            QCoreApplication::quit();
-        });
     }
 
     AppController controller;

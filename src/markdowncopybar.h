@@ -4,7 +4,7 @@
 
 #include <QWidget>
 #include <QPushButton>
-#include <QProcess>
+#include "copyprocessor.h" // 【新增】引入
 
 class QPlainTextEdit;
 
@@ -13,23 +13,18 @@ class MarkdownCopyBar : public QWidget
     Q_OBJECT
 
 public:
-    enum ContentType {
-        SingleFormula,
-        MixedContent
-    };
+    // 枚举类型改用全局定义的 ContentType，这里可以删除本地的 enum
 
     explicit MarkdownCopyBar(QWidget* parent = nullptr);
     void setSourceEditor(QPlainTextEdit* editor);
-
-    // 【修改】将此函数改为 public，供 MainWindow 调用
-    void executeCopy(const QString& text);
+    void executeCopy(const QString& text); // 保持 public 供外部调用
 
 private slots:
     void onCopyOriginal();
     void onCopyInline();
     void onCopyDisplay();
     void onSourceTextChanged();
-    void onExternalProcessFinished(int exitCode, QProcess::ExitStatus exitStatus);
+    // 删除 onExternalProcessFinished，逻辑移至 CopyProcessor
 
 private:
     void setupUi();
@@ -40,8 +35,9 @@ private:
     QPushButton* m_btnDisplay;
 
     QPlainTextEdit* m_sourceEdit = nullptr;
-    ContentType m_currentType;
-    QProcess* m_externalProcess = nullptr;
+    ContentType m_currentType; // 使用全局枚举
+
+    CopyProcessor* m_processor = nullptr; // 【新增】
 };
 
 #endif // MARKDOWNCOPYBAR_H
