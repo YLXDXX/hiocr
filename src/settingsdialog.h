@@ -35,6 +35,8 @@ private:
     void saveCurrentServiceToTemp(int row);
 
     QLineEdit* m_serverUrlEdit;
+    QLineEdit* m_globalApiKeyEdit;      // 【新增】
+    QLineEdit* m_globalModelNameEdit;   // 【新增】
 
     ShortcutEdit* m_scScreenshotEdit;
     ShortcutEdit* m_scTextEdit;

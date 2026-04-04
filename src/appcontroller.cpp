@@ -364,35 +364,39 @@ void AppController::applyServiceConfig(const QString& serviceId)
     QString textP, formulaP, tableP, url, apiKey, modelName;
 
     if (serviceId.isEmpty()) {
+        // 使用全局默认设置
         textP = m_settings->textPrompt();
         formulaP = m_settings->formulaPrompt();
         tableP = m_settings->tablePrompt();
         url = m_settings->serverUrl();
-        // 全局默认目前不支持 API Key (或者可以扩展 SettingsManager)
-        apiKey = "";
-        modelName = "";
+
+        // 【修改】从全局设置读取 API Key 和 Model Name
+        apiKey = m_settings->globalApiKey();
+        modelName = m_settings->globalModelName();
     } else {
+        // 使用特定服务配置
         ServiceProfile p = m_settings->getServiceProfile(serviceId);
         if (p.isEmpty()) {
+            // 回退逻辑...
             textP = m_settings->textPrompt();
             formulaP = m_settings->formulaPrompt();
             tableP = m_settings->tablePrompt();
             url = m_settings->serverUrl();
-            apiKey = "";
-            modelName = "";
+            apiKey = m_settings->globalApiKey();
+            modelName = m_settings->globalModelName();
         } else {
             textP = p.textPrompt;
             formulaP = p.formulaPrompt;
             tableP = p.tablePrompt;
             url = p.serverUrl;
-            apiKey = p.apiKey;       // 【新增】
-            modelName = p.modelName; // 【新增】
+            apiKey = p.apiKey;
+            modelName = p.modelName;
         }
     }
 
     m_recognitionManager->setServerUrl(url);
-    m_recognitionManager->setApiKey(apiKey);         // 【新增】
-    m_recognitionManager->setModelName(modelName);   // 【新增】
+    m_recognitionManager->setApiKey(apiKey);
+    m_recognitionManager->setModelName(modelName);
 
     qDebug() << "Applied service config. URL:" << url << "Model:" << modelName;
 

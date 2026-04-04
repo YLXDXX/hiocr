@@ -11,6 +11,9 @@ namespace Constants {
 
     // --- 默认服务器地址 ---
     const QString DEFAULT_SERVER_URL = "http://localhost:8080/v1/chat/completions";
+    // 【新增】全局默认 API 配置
+    const QString DEFAULT_GLOBAL_API_KEY = "";
+    const QString DEFAULT_GLOBAL_MODEL_NAME = ""; // 默认为空，让用户填写如 qwen-plus
 
     // --- 快捷键默认值 ---
     const QString SHORTCUT_SCREENSHOT = "";

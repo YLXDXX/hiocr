@@ -23,10 +23,15 @@ SettingsManager::SettingsManager(QObject* parent) : QObject(parent)
 
 void SettingsManager::initializeDefaults()
 {
+    // 1. 如果是全新安装（不存在主键）
     if (!m_settings.contains("server/url")) {
         qDebug() << "Initializing full defaults...";
 
         m_settings.setValue("server/url", Constants::DEFAULT_SERVER_URL);
+        // 【新增】初始化全局默认 API Key 和 Model Name
+        m_settings.setValue("server/api_key", Constants::DEFAULT_GLOBAL_API_KEY);
+        m_settings.setValue("server/model_name", Constants::DEFAULT_GLOBAL_MODEL_NAME);
+
         m_settings.setValue("shortcuts/screenshot", Constants::SHORTCUT_SCREENSHOT);
         m_settings.setValue("shortcuts/text_recognize", Constants::SHORTCUT_TEXT);
         m_settings.setValue("shortcuts/formula_recognize", Constants::SHORTCUT_FORMULA);
@@ -39,10 +44,7 @@ void SettingsManager::initializeDefaults()
         m_settings.setValue("behavior/auto_copy_result", Constants::DEFAULT_AUTO_COPY_RESULT);
         m_settings.setValue("behavior/auto_recognize_screenshot", Constants::DEFAULT_AUTO_RECOGNIZE_SCREENSHOT);
         m_settings.setValue("behavior/auto_external_process_before_copy", Constants::DEFAULT_AUTO_EXTERNAL_PROCESS_BEFORE_COPY);
-
-        // 【新增】初始化自动启动服务开关
         m_settings.setValue("service/auto_start", Constants::DEFAULT_AUTO_START_SERVICE);
-
         m_settings.setValue("service/start_command", Constants::DEFAULT_SERVICE_START_COMMAND);
         m_settings.setValue("service/idle_timeout", Constants::DEFAULT_SERVICE_IDLE_TIMEOUT);
         m_settings.setValue("network/request_parameters", Constants::DEFAULT_REQUEST_PARAMETERS);
@@ -55,7 +57,6 @@ void SettingsManager::initializeDefaults()
 
         // 初始化默认服务列表
         QList<ServiceProfile> defaults;
-
         ServiceProfile s1;
         s1.id = QUuid::createUuid().toString();
         s1.name = Constants::DEFAULT_SERVICE_1_NAME;
@@ -78,17 +79,15 @@ void SettingsManager::initializeDefaults()
 
         setServiceProfiles(defaults);
         m_settings.setValue("services/switch_mode", Constants::DEFAULT_SERVICE_SWITCH_MODE);
-        // 默认选中第一个本地服务
         m_settings.setValue("services/current_id", s1.id);
-        // 【新增】默认本地服务ID
         m_settings.setValue("services/default_local_id", s1.id);
 
         m_settings.sync();
     }
     else {
-        bool needsSync = false;
+        // 2. 如果是旧版本升级，补全缺失的字段
+        bool needsSync = false; // 变量在此处声明
 
-        // 补全缺失的字段
         if (!m_settings.contains("services/switch_mode")) {
             m_settings.setValue("services/switch_mode", Constants::DEFAULT_SERVICE_SWITCH_MODE);
             needsSync = true;
@@ -101,8 +100,18 @@ void SettingsManager::initializeDefaults()
             m_settings.setValue("service/auto_start", Constants::DEFAULT_AUTO_START_SERVICE);
             needsSync = true;
         }
+
+        // 【新增】补全新增的全局 API Key 和 Model Name
+        if (!m_settings.contains("server/api_key")) {
+            m_settings.setValue("server/api_key", Constants::DEFAULT_GLOBAL_API_KEY);
+            needsSync = true;
+        }
+        if (!m_settings.contains("server/model_name")) {
+            m_settings.setValue("server/model_name", Constants::DEFAULT_GLOBAL_MODEL_NAME);
+            needsSync = true;
+        }
+
         if (!m_settings.contains("services/default_local_id")) {
-            // 尝试从现有服务列表中找一个有启动命令的作为默认
             QList<ServiceProfile> profiles = serviceProfiles();
             for(const auto& p : profiles) {
                 if (!p.startCommand.isEmpty()) {
@@ -121,18 +130,9 @@ void SettingsManager::initializeDefaults()
                 p.serverUrl = Constants::DEFAULT_SERVER_URL;
                 listChanged = true;
             }
-            if (p.textPrompt.isEmpty()) {
-                p.textPrompt = Constants::PROMPT_TEXT;
-                listChanged = true;
-            }
-            if (p.formulaPrompt.isEmpty()) {
-                p.formulaPrompt = Constants::PROMPT_FORMULA;
-                listChanged = true;
-            }
-            if (p.tablePrompt.isEmpty()) {
-                p.tablePrompt = Constants::PROMPT_TABLE;
-                listChanged = true;
-            }
+            if (p.textPrompt.isEmpty()) { p.textPrompt = Constants::PROMPT_TEXT; listChanged = true; }
+            if (p.formulaPrompt.isEmpty()) { p.formulaPrompt = Constants::PROMPT_FORMULA; listChanged = true; }
+            if (p.tablePrompt.isEmpty()) { p.tablePrompt = Constants::PROMPT_TABLE; listChanged = true; }
         }
 
         if (listChanged) {
@@ -446,3 +446,24 @@ void SettingsManager::setPureMathProcessorEnabled(bool enabled) {
     }
 }
 
+QString SettingsManager::globalApiKey() const {
+    return m_settings.value("server/api_key", Constants::DEFAULT_GLOBAL_API_KEY).toString();
+}
+
+void SettingsManager::setGlobalApiKey(const QString& key) {
+    if (globalApiKey() != key) {
+        m_settings.setValue("server/api_key", key);
+        emit globalApiKeyChanged(key);
+    }
+}
+
+QString SettingsManager::globalModelName() const {
+    return m_settings.value("server/model_name", Constants::DEFAULT_GLOBAL_MODEL_NAME).toString();
+}
+
+void SettingsManager::setGlobalModelName(const QString& name) {
+    if (globalModelName() != name) {
+        m_settings.setValue("server/model_name", name);
+        emit globalModelNameChanged(name);
+    }
+}

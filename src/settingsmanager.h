@@ -38,6 +38,12 @@ public:
     QString serverUrl() const;
     void setServerUrl(const QString& url);
 
+    QString globalApiKey() const;
+    void setGlobalApiKey(const QString& key);
+
+    QString globalModelName() const;
+    void setGlobalModelName(const QString& name);
+
     // 快捷键设置
     QString screenshotShortcut() const;
     QString textRecognizeShortcut() const;
@@ -183,6 +189,8 @@ signals:
     void defaultLocalServiceIdChanged(const QString& id);
 
     void serverUrlChanged(const QString& url);
+    void globalApiKeyChanged(const QString& key);
+    void globalModelNameChanged(const QString& name);
     void shortcutsChanged();
     void autoUseLastPromptChanged(bool enabled);
     void displayMathEnvironmentChanged(const QString& env);

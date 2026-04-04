@@ -61,7 +61,8 @@ void NetworkManager::sendRequest(const RequestConfig& config)
         if (err.error == QJsonParseError::NoError && paramsDoc.isObject()) {
             QJsonObject paramsObj = paramsDoc.object();
             for (auto it = paramsObj.constBegin(); it != paramsObj.constEnd(); ++it) {
-                // 不覆盖已设置的值 (如 messages, model)，除非用户明确要覆盖
+                // 不覆盖已设置的值，除非用户明确要覆盖
+                // 注意：enable_thinking 通常需要在最外层，这里逻辑正确
                 if (!json.contains(it.key())) {
                     json[it.key()] = it.value();
                 }

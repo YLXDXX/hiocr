@@ -117,6 +117,16 @@ void SettingsDialog::setupUi()
     m_serverUrlEdit = new QLineEdit();
     globalForm->addRow("默认服务器地址:", m_serverUrlEdit);
 
+    // 【新增】
+    m_globalApiKeyEdit = new QLineEdit();
+    m_globalApiKeyEdit->setEchoMode(QLineEdit::Password);
+    globalForm->addRow("API Key:", m_globalApiKeyEdit);
+
+    // 【新增】
+    m_globalModelNameEdit = new QLineEdit();
+    m_globalModelNameEdit->setPlaceholderText("例如: qwen-plus, deepseek-chat");
+    globalForm->addRow("模型名称:", m_globalModelNameEdit);
+
     m_globalTextPromptEdit = new QLineEdit();
     m_globalFormulaPromptEdit = new QLineEdit();
     m_globalTablePromptEdit = new QLineEdit();
@@ -343,6 +353,8 @@ void SettingsDialog::loadSettings()
     populateServiceList();
 
     m_serverUrlEdit->setText(s->serverUrl());
+    m_globalApiKeyEdit->setText(s->globalApiKey());
+    m_globalModelNameEdit->setText(s->globalModelName());
     m_globalTextPromptEdit->setText(s->textPrompt());
     m_globalFormulaPromptEdit->setText(s->formulaPrompt());
     m_globalTablePromptEdit->setText(s->tablePrompt());
@@ -480,6 +492,8 @@ void SettingsDialog::onSaveClicked()
     s->setServiceSwitchMode(static_cast<SettingsManager::ServiceSwitchMode>(m_serviceSwitchModeCombo->currentData().toInt()));
 
     s->setServerUrl(m_serverUrlEdit->text());
+    s->setGlobalApiKey(m_globalApiKeyEdit->text());
+    s->setGlobalModelName(m_globalModelNameEdit->text());
     s->setTextPrompt(m_globalTextPromptEdit->text());
     s->setFormulaPrompt(m_globalFormulaPromptEdit->text());
     s->setTablePrompt(m_globalTablePromptEdit->text());
