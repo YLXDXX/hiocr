@@ -50,6 +50,10 @@ public slots:
     void updateScriptCheckboxes();
     void setRecognizeType(ContentType type);
 
+
+    void onCopyCurrentImage();
+    void updateCopyImageActionState();
+
 signals:
     void recognizeRequested(const QString& prompt, const QString& base64Image);
     void typedRecognizeRequested(const QString& prompt, const QString& base64Image, ContentType type);
@@ -99,6 +103,8 @@ private:
     QCheckBox* m_scriptFormulaCheck = nullptr;
     QCheckBox* m_scriptTableCheck = nullptr;
     QCheckBox* m_scriptPureMathCheck = nullptr;
+
+    QAction* m_copyImageAction = nullptr;
 };
 
 #endif // MAINWINDOW_H

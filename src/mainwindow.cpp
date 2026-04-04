@@ -91,6 +91,7 @@ void MainWindow::setupMenuBar()
     QMenuBar* menuBar = new QMenuBar(this);
     setMenuBar(menuBar);
 
+    // --- 文件菜单  ---
     QMenu* fileMenu = menuBar->addMenu("文件");
     fileMenu->addAction("打开图片", this, [this]() {
         QString file = QFileDialog::getOpenFileName(this, "选择图片", "", "Images (*.png *.jpg *.bmp)");
@@ -111,9 +112,15 @@ void MainWindow::setupMenuBar()
         fileMenu->addSeparator();
         fileMenu->addAction("退出", qApp, &QApplication::quit);
 
+        // --- 工具菜单 ---
         QMenu* toolsMenu = menuBar->addMenu("工具");
 
-        // 【修改】识别服务菜单
+        // 【新增】添加“复制当前图片”选项
+        m_copyImageAction = toolsMenu->addAction("复制当前图片", this, &MainWindow::onCopyCurrentImage);
+        m_copyImageAction->setShortcut(QKeySequence::Copy); // 可选：也可以绑定快捷键，这里默认不给快捷键防止与默认复制冲突
+        m_copyImageAction->setEnabled(false); // 初始状态为禁用
+
+        // --- 识别服务菜单  ---
         QMenu* serviceMenu = menuBar->addMenu("识别服务");
 
         QWidget* serviceWidget = new QWidget();
@@ -148,6 +155,7 @@ void MainWindow::setupMenuBar()
         });
         m_stopAllServicesAction->setEnabled(false);
 
+        // --- 设置菜单  ---
         QMenu* settingsMenu = menuBar->addMenu("设置");
         settingsMenu->addAction("首选项", this, [this](){ emit settingsTriggered(); });
 
@@ -209,6 +217,7 @@ void MainWindow::setupConnections()
         QString base64 = m_imageView->currentBase64();
         emit typedRecognizeRequested(prompt, base64, type);
     });
+    connect(m_imageView, &ImageViewWidget::imageChanged, this, &MainWindow::updateCopyImageActionState);
 }
 
 void MainWindow::setImage(const QImage& image) { m_imageView->setImage(image); }
@@ -369,5 +378,30 @@ void MainWindow::setRecognizeType(ContentType type)
 {
     if (m_copyBar) {
         m_copyBar->setOriginalRecognizeType(type);
+    }
+}
+
+void MainWindow::onCopyCurrentImage()
+{
+    if (!m_imageView || !m_imageView->hasImage()) {
+        return;
+    }
+
+    QImage image = m_imageView->currentImage();
+    if (!image.isNull()) {
+        // 将图片写入系统剪贴板
+        QApplication::clipboard()->setImage(image);
+        statusBar()->showMessage("图片已复制到剪贴板", 3000);
+    } else {
+        statusBar()->showMessage("无法复制：图片数据无效", 3000);
+    }
+}
+
+void MainWindow::updateCopyImageActionState()
+{
+    if (m_copyImageAction) {
+        // 根据是否有图片来设置菜单项是否可用
+        bool hasImage = m_imageView && m_imageView->hasImage();
+        m_copyImageAction->setEnabled(hasImage);
     }
 }

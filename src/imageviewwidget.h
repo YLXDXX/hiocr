@@ -28,11 +28,14 @@ public:
 
     void setImage(const QImage& image);
     void setImage(const QString& path);
+
     QString currentBase64() const { return m_currentBase64; }
     void clear();
     bool hasImage() const { return !m_currentBase64.isEmpty(); }
 
     void setViewMode(ViewMode mode);   // 设置显示模式
+
+    QImage currentImage() const; // 【新增】获取当前显示的图片对象
 
 signals:
     void imageChanged();
@@ -45,6 +48,8 @@ protected:
 
     // 【新增】重写 event 方法捕获 DPI 变化
     bool event(QEvent* event) override;
+
+    QImage m_originalImage; // 【新增】缓存原始 QImage，用于复制时获取原图数据
 
 private slots:
     void openImageFile();

@@ -134,20 +134,20 @@ void ImageViewWidget::setImage(const QImage& image)
         return;
     }
 
+    // 【新增】保存原始图片副本，用于复制功能
+    m_originalImage = image;
+
     // 关键修改：直接从原图创建 QPixmap，不做任何缩放，保留所有像素细节
     m_originalPixmap = QPixmap::fromImage(image);
 
+    // ... 现有的代码逻辑保持不变 ...
     m_manualZoomMode = false;
-
-    // 更新场景
     m_scene->clear();
     m_pixmapItem = m_scene->addPixmap(m_originalPixmap);
     m_scene->setSceneRect(m_originalPixmap.rect());
-
     updateBase64FromImage(image);
-    updateView(); // 应用视图变换
+    updateView();
     emit imageChanged();
-
     m_view->setAttribute(Qt::WA_TransparentForMouseEvents, false);
     m_view->setInteractive(true);
 }
@@ -167,11 +167,20 @@ void ImageViewWidget::clear()
     m_scene->clear();
     m_pixmapItem = nullptr;
     m_originalPixmap = QPixmap();
+
+    // 【新增】清空保存的原图
+    m_originalImage = QImage();
+
     m_currentBase64.clear();
     emit imageChanged();
 
     m_view->setAttribute(Qt::WA_TransparentForMouseEvents, true);
     m_view->setInteractive(false);
+}
+
+QImage ImageViewWidget::currentImage() const
+{
+    return m_originalImage;
 }
 
 void ImageViewWidget::setViewMode(ViewMode mode)
