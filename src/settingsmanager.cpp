@@ -28,9 +28,9 @@ void SettingsManager::initializeDefaults()
         qDebug() << "Initializing full defaults...";
 
         m_settings.setValue("server/url", Constants::DEFAULT_SERVER_URL);
-        // 【新增】初始化全局默认 API Key 和 Model Name
         m_settings.setValue("server/api_key", Constants::DEFAULT_GLOBAL_API_KEY);
         m_settings.setValue("server/model_name", Constants::DEFAULT_GLOBAL_MODEL_NAME);
+
 
         m_settings.setValue("shortcuts/screenshot", Constants::SHORTCUT_SCREENSHOT);
         m_settings.setValue("shortcuts/text_recognize", Constants::SHORTCUT_TEXT);
@@ -48,6 +48,7 @@ void SettingsManager::initializeDefaults()
         m_settings.setValue("service/start_command", Constants::DEFAULT_SERVICE_START_COMMAND);
         m_settings.setValue("service/idle_timeout", Constants::DEFAULT_SERVICE_IDLE_TIMEOUT);
         m_settings.setValue("network/request_parameters", Constants::DEFAULT_REQUEST_PARAMETERS);
+        m_settings.setValue("network/request_timeout", Constants::DEFAULT_REQUEST_TIMEOUT);
         m_settings.setValue("display/view_mode", Constants::DEFAULT_IMAGE_VIEW_MODE);
         m_settings.setValue("prompts/text", Constants::PROMPT_TEXT);
         m_settings.setValue("prompts/formula", Constants::PROMPT_FORMULA);
@@ -119,6 +120,11 @@ void SettingsManager::initializeDefaults()
                     break;
                 }
             }
+            needsSync = true;
+        }
+
+        if (!m_settings.contains("network/request_timeout")) {
+            m_settings.setValue("network/request_timeout", Constants::DEFAULT_REQUEST_TIMEOUT);
             needsSync = true;
         }
 
@@ -465,5 +471,18 @@ void SettingsManager::setGlobalModelName(const QString& name) {
     if (globalModelName() != name) {
         m_settings.setValue("server/model_name", name);
         emit globalModelNameChanged(name);
+    }
+}
+
+
+int SettingsManager::requestTimeout() const {
+    // 默认值取 Constants::DEFAULT_REQUEST_TIMEOUT
+    return m_settings.value("network/request_timeout", Constants::DEFAULT_REQUEST_TIMEOUT).toInt();
+}
+
+void SettingsManager::setRequestTimeout(int seconds) {
+    if (requestTimeout() != seconds) {
+        m_settings.setValue("network/request_timeout", seconds);
+        emit requestTimeoutChanged(seconds);
     }
 }

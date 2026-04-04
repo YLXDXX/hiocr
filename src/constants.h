@@ -89,6 +89,9 @@ namespace Constants {
 
     // --- 新增：脚本启用开关默认值 ---
     const bool DEFAULT_PROCESSOR_ENABLED = true; // 默认全开
+
+    // 【新增】默认请求超时时间 (秒)
+    const int DEFAULT_REQUEST_TIMEOUT = 30;
 }
 
 #endif // CONSTANTS_H

@@ -5,6 +5,7 @@
 #include <QObject>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
+#include <QTimer>
 
 // 【新增】请求配置结构体，方便后续扩展 API Key 等
 struct RequestConfig {
@@ -35,6 +36,7 @@ private slots:
 private:
     QNetworkAccessManager* m_manager;
     QNetworkReply* m_currentReply = nullptr;
+    QTimer* m_timeoutTimer = nullptr; // 【新增】超时定时器
 };
 
 #endif // NETWORKMANAGER_H

@@ -248,6 +248,17 @@ void SettingsDialog::setupUi()
     // --- 高级参数 ---
     QGroupBox* advancedGroup = new QGroupBox("高级请求参数");
     QVBoxLayout* advLayout = new QVBoxLayout(advancedGroup);
+
+    // 【新增】超时设置布局
+    QHBoxLayout* timeoutLayout = new QHBoxLayout();
+    timeoutLayout->addWidget(new QLabel("请求超时时间 (秒):"));
+    m_timeoutSpin = new QSpinBox();
+    m_timeoutSpin->setRange(5, 300); // 限制范围 5秒 - 5分钟
+    m_timeoutSpin->setSuffix(" 秒");
+    timeoutLayout->addWidget(m_timeoutSpin);
+    timeoutLayout->addStretch();
+    advLayout->addLayout(timeoutLayout);
+
     m_requestParamsEdit = new QPlainTextEdit();
     QFont font("monospace");
     font.setStyleHint(QFont::Monospace);
@@ -375,12 +386,9 @@ void SettingsDialog::loadSettings()
     m_displayMathCombo->setCurrentIndex(m_displayMathCombo->findData(s->displayMathEnvironment()));
     m_mathFontCombo->setCurrentIndex(m_mathFontCombo->findData(s->mathFont()));
 
-    // 【删除旧代码】
-    // m_externalProcessorEdit->setText(s->externalProcessorCommand());
-    // m_scExternalProcessEdit->setText(s->externalProcessShortcut());
-
     m_autoRecognizeCheck->setChecked(s->autoRecognizeOnScreenshot());
     m_autoCopyCheck->setChecked(s->autoCopyResult());
+    m_timeoutSpin->setValue(s->requestTimeout());
     m_requestParamsEdit->setPlainText(s->requestParameters());
     m_autoExternalProcessCheck->setChecked(s->autoExternalProcessBeforeCopy());
 
@@ -509,6 +517,7 @@ void SettingsDialog::onSaveClicked()
 
     s->setAutoRecognizeOnScreenshot(m_autoRecognizeCheck->isChecked());
     s->setAutoCopyResult(m_autoCopyCheck->isChecked());
+    s->setRequestTimeout(m_timeoutSpin->value());
     s->setRequestParameters(paramsText);
     s->setAutoExternalProcessBeforeCopy(m_autoExternalProcessCheck->isChecked());
 

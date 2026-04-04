@@ -11,6 +11,16 @@
 
 NetworkManager::NetworkManager(QObject* parent) : QObject(parent) {
     m_manager = new QNetworkAccessManager(this);
+
+    // 【新增】初始化定时器
+    m_timeoutTimer = new QTimer(this);
+    m_timeoutTimer->setSingleShot(true); // 单次触发
+    connect(m_timeoutTimer, &QTimer::timeout, this, [this](){
+        if (m_currentReply) {
+            qWarning() << "Network request timed out, aborting...";
+            m_currentReply->abort(); // 中断请求
+        }
+    });
 }
 
 void NetworkManager::sendRequest(const RequestConfig& config)
@@ -83,15 +93,32 @@ void NetworkManager::sendRequest(const RequestConfig& config)
     }
 
     m_currentReply = m_manager->post(request, data);
+
+    // 【新增】启动超时计时器
+    // 从 SettingsManager 读取超时秒数并转换为毫秒
+    int timeoutSec = SettingsManager::instance()->requestTimeout();
+    m_timeoutTimer->start(timeoutSec * 1000);
+
     connect(m_currentReply, &QNetworkReply::finished, this, &NetworkManager::onReplyFinished);
 }
 
 void NetworkManager::onReplyFinished()
 {
+    // 【新增】请求结束（无论成功失败），停止计时器
+    m_timeoutTimer->stop();
+
     if (!m_currentReply) return;
 
     QNetworkReply* reply = m_currentReply;
     m_currentReply = nullptr; // 清空成员指针，后面通过 reply 操作
+
+    // 【新增】检测是否为超时导致的中断
+    if (reply->error() == QNetworkReply::OperationCanceledError) {
+        emit requestFinished(QString(), false, "请求超时，已强制中断");
+        reply->deleteLater();
+        return;
+    }
+
 
     // 检查网络错误
     if (reply->error() != QNetworkReply::NoError) {

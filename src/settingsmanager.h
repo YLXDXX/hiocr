@@ -183,6 +183,10 @@ public:
     bool pureMathProcessorEnabled() const;
     void setPureMathProcessorEnabled(bool enabled);
 
+    // 【新增】请求超时设置
+    int requestTimeout() const;
+    void setRequestTimeout(int seconds);
+
 signals:
     void serviceProfilesChanged();
     void currentServiceIdChanged(const QString& id);
@@ -228,6 +232,8 @@ signals:
     void formulaProcessorEnabledChanged(bool enabled);
     void tableProcessorEnabledChanged(bool enabled);
     void pureMathProcessorEnabledChanged(bool enabled);
+
+    void requestTimeoutChanged(int seconds);
 
 private:
     explicit SettingsManager(QObject* parent = nullptr);

@@ -81,6 +81,7 @@ private:
     QPushButton* m_addServiceBtn;
     QPushButton* m_removeServiceBtn;
 
+    QSpinBox* m_timeoutSpin; // 【新增】
     QPlainTextEdit* m_requestParamsEdit;
 
     // 全局默认提示词
