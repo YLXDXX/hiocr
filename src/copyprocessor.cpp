@@ -126,22 +126,29 @@ QString CopyProcessor::getFinalCommand(ContentType originalType, const QString& 
 bool CopyProcessor::isPureMathContent(const QString& text) const
 {
     QString trimmed = text.trimmed();
-    // 增强检测：支持无包裹的纯公式（如果上下文确认它是公式）
-    // 但在 CopyProcessor 中，我们保守一点，只检测包裹的，或者依赖 UI 传来的类型。
-    // 不过题目要求“当识别所得内容为纯数学公式时”，通常意味着单块公式。
+    if (trimmed.isEmpty()) return false;
 
-    // 检测是否有且仅有一个公式块，且没有其他普通文字
-    // 正则匹配 $$...$$ 或 $...$     // 这里的逻辑比较复杂，简化处理：
-    // 只要是以 $$ 开头结尾，或者以 $ 开头结尾，且中间没有双换行（混合内容标志），就视为纯数学
+    // --- 1. 检测行间公式界定符 ---
+    // 支持 $$...$$ 或 \[...\]
+    bool isDisplay = (trimmed.startsWith("$$") && trimmed.endsWith("$$")) ||
+    (trimmed.startsWith("\\[") && trimmed.endsWith("\\]"));
 
-    bool isDisplay = trimmed.startsWith("$$") && trimmed.endsWith("$$");
-    bool isInline = (trimmed.startsWith("$") && trimmed.endsWith("$")) && !isDisplay;
+    // --- 2. 检测行内公式界定符 ---
+    // 支持 $...$ (需排除 $$) 或 \(...\)
+    bool isInline = (trimmed.startsWith("$") && trimmed.endsWith("$") && !trimmed.startsWith("$$")) ||
+    (trimmed.startsWith("\\(") && trimmed.endsWith("\\)"));
 
     if (isDisplay || isInline) {
-        // 简单的判断：如果中间有双换行，通常是混合内容
+        // 简单的判断：如果中间有双换行，通常是混合内容（Markdown 段落分割）
         if (trimmed.contains("\n\n")) return false;
-        // 如果中间有多余的 $$ (对 Display 来说)
-        if (isDisplay && trimmed.count("$$") > 2) return false;
+
+        // 检查是否有多个公式块拼接的情况
+        // 例如：$$a$$ $$b$$，中间有空格或换行，这通常视为混合内容而非单个纯公式
+        // 针对 $$ 的情况：如果数量大于2，说明有多个块
+        if (trimmed.startsWith("$$") && trimmed.count("$$") > 2) return false;
+
+        // 针对 \[ \] 的情况：如果中间再次出现界定符，视为混合
+        if (trimmed.startsWith("\\[") && (trimmed.count("\\[") > 1 || trimmed.count("\\]") > 1)) return false;
 
         return true;
     }

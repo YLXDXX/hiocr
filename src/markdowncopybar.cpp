@@ -67,12 +67,22 @@ void MarkdownCopyBar::onSourceTextChanged()
 void MarkdownCopyBar::updateButtonState(const QString& content)
 {
     QString trimmed = content.trimmed();
-    bool isDisplayMath = trimmed.startsWith("$$") && trimmed.endsWith("$$");
-    bool isInlineMath = (trimmed.startsWith("$") && trimmed.endsWith("$")) && !isDisplayMath;
 
-    if (isDisplayMath || isInlineMath) {
+    // 【修改】扩展界定符检测
+    bool isDisplay = (trimmed.startsWith("$$") && trimmed.endsWith("$$")) ||
+    (trimmed.startsWith("\\[") && trimmed.endsWith("\\]"));
+
+    bool isInline = (trimmed.startsWith("$") && trimmed.endsWith("$") && !trimmed.startsWith("$$")) ||
+    (trimmed.startsWith("\\(") && trimmed.endsWith("\\)"));
+
+    if (isDisplay || isInline) {
         m_currentType = ContentType::Formula;
-        if (trimmed.contains("\n\n") || trimmed.count("$$") > 2) {
+        // 如果包含双换行，通常认为是混合内容（段落+公式）
+        if (trimmed.contains("\n\n")) {
+            m_currentType = ContentType::MixedContent;
+        }
+        // 如果是 $$ 且中间出现多次，视为混合
+        if (trimmed.startsWith("$$") && trimmed.count("$$") > 2) {
             m_currentType = ContentType::MixedContent;
         }
     } else {
@@ -90,7 +100,12 @@ void MarkdownCopyBar::onCopyOriginal()
 
     // 提取内容逻辑
     if (m_currentType == ContentType::Formula) {
+        // 【修改】支持四种界定符的剥离
         if (content.startsWith("$$") && content.endsWith("$$")) {
+            finalText = content.mid(2, content.length() - 4).trimmed();
+        } else if (content.startsWith("\\[") && content.endsWith("\\]")) {
+            finalText = content.mid(2, content.length() - 4).trimmed();
+        } else if (content.startsWith("\\(") && content.endsWith("\\)")) {
             finalText = content.mid(2, content.length() - 4).trimmed();
         } else if (content.startsWith("$") && content.endsWith("$")) {
             finalText = content.mid(1, content.length() - 2).trimmed();
@@ -101,20 +116,13 @@ void MarkdownCopyBar::onCopyOriginal()
         finalText = content;
     }
 
-    // 【修复】逻辑优化
     ContentType typeToUse = m_originalRecognizeType;
-
-    // 如果当前内容结构为单公式（m_currentType == Formula），则具有“纯公式”优先级
     if (m_currentType == ContentType::Formula) {
         SettingsManager* s = SettingsManager::instance();
-        // 检查是否配置了纯公式脚本
         if (s->pureMathProcessorEnabled() && !s->pureMathProcessorCommand().isEmpty()) {
             typeToUse = ContentType::PureMath;
         }
-        // 如果未配置纯公式脚本，typeToUse 保持为 m_originalRecognizeType，
-        // 这样会自动回退到文字/公式/表格对应的脚本，符合需求。
     }
-
     m_processor->processAndCopy(finalText, typeToUse);
 }
 
@@ -125,7 +133,13 @@ void MarkdownCopyBar::onCopyInline()
     if (m_currentType != ContentType::Formula) return;
 
     QString core;
+
+    // 【修改】统一提取核心逻辑
     if (content.startsWith("$$") && content.endsWith("$$")) {
+        core = content.mid(2, content.length() - 4).trimmed();
+    } else if (content.startsWith("\\[") && content.endsWith("\\]")) {
+        core = content.mid(2, content.length() - 4).trimmed();
+    } else if (content.startsWith("\\(") && content.endsWith("\\)")) {
         core = content.mid(2, content.length() - 4).trimmed();
     } else if (content.startsWith("$") && content.endsWith("$")) {
         core = content.mid(1, content.length() - 2).trimmed();
@@ -133,9 +147,7 @@ void MarkdownCopyBar::onCopyInline()
         core = content;
     }
 
-    // 【修复】传递原始识别类型，而不是强制 Formula
-    // CopyProcessor 会自动处理“纯公式检测”逻辑（因为这里带了 $ 包裹，会被检测为纯公式结构）
-    // 如果没有纯公式脚本，会回退到原始类型脚本。
+    // 强制包裹为 $...$ (标准行内)
     m_processor->processAndCopy("$" + core + "$", m_originalRecognizeType);
 }
 
@@ -146,10 +158,16 @@ void MarkdownCopyBar::onCopyDisplay()
     QString finalText;
     QString env = SettingsManager::instance()->displayMathEnvironment();
 
+    // 【修改】更新 Lambda 支持四种界定符
     auto extractContent = [](const QString& raw) -> QString {
         QString t = raw.trimmed();
+
+        // 优先匹配长界定符（先匹配 $$ 和 \[ \]，再匹配单 $ 和 \( \)）
         if (t.startsWith("$$") && t.endsWith("$$")) return t.mid(2, t.length() - 4).trimmed();
+        if (t.startsWith("\\[") && t.endsWith("\\]")) return t.mid(2, t.length() - 4).trimmed();
+        if (t.startsWith("\\(") && t.endsWith("\\)")) return t.mid(2, t.length() - 4).trimmed();
         if (t.startsWith("$") && t.endsWith("$")) return t.mid(1, t.length() - 2).trimmed();
+
         return t;
     };
 
@@ -161,8 +179,12 @@ void MarkdownCopyBar::onCopyDisplay()
             finalText = "\\begin{" + env + "}\n\t" + core + "\n\\end{" + env + "}";
         }
     } else {
+        // 混合内容替换逻辑
         finalText = content;
-        QRegularExpression re("\\$\\$([\\s\\S]*?)\\$\\$");
+        QRegularExpression re("\\$\\$([\\s\\S]*?)\\$\\$"); // 注意：混合内容的正则替换比较复杂，这里暂保留原逻辑
+        // 注意：如果混合内容中包含 \[...\]，上面的正则不会匹配到。
+        // 建议混合内容的处理逻辑保持原样，或者用户需确保混合内容使用的是 $$。
+
         QRegularExpressionMatchIterator it = re.globalMatch(finalText);
         QString resultText;
         int lastEnd = 0;
@@ -183,7 +205,5 @@ void MarkdownCopyBar::onCopyDisplay()
         finalText = resultText;
     }
 
-    // 【修复】传递原始识别类型，而不是强制 Formula
-    // 同上，CopyProcessor 会先尝试纯公式脚本（因为带了 $$ 包裹），回退时使用原始类型脚本。
     m_processor->processAndCopy(finalText, m_originalRecognizeType);
 }
