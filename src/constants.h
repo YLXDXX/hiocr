@@ -11,14 +11,14 @@ namespace Constants {
 
     // --- 默认服务器地址 ---
     const QString DEFAULT_SERVER_URL = "http://localhost:8080/v1/chat/completions";
-    // 【新增】全局默认 API 配置
+    // 全局默认 API 配置
     const QString DEFAULT_GLOBAL_API_KEY = "";
     const QString DEFAULT_GLOBAL_MODEL_NAME = ""; // 默认为空，让用户填写如 qwen-plus
 
     // --- 快捷键默认值 ---
     const QString SHORTCUT_SCREENSHOT = "";
-    const QString SHORTCUT_TEXT = "Alt+M";
-    const QString SHORTCUT_FORMULA = "Ctrl+Alt+M";
+    const QString SHORTCUT_TEXT = "Ctrl+Alt+M";
+    const QString SHORTCUT_FORMULA = "";
     const QString SHORTCUT_TABLE = "";
     const QString SHORTCUT_EXTERNAL_PROCESS = "";
 
@@ -35,7 +35,7 @@ namespace Constants {
     const bool DEFAULT_AUTO_EXTERNAL_PROCESS_BEFORE_COPY = false;
 
     // --- 服务管理设置 ---
-    // 【修改】默认开启自动启动，提升用户体验
+    // 默认开启自动启动，提升用户体验
     const bool DEFAULT_AUTO_START_SERVICE = true;
     const QString DEFAULT_SERVICE_START_COMMAND = "";
     const int DEFAULT_SERVICE_IDLE_TIMEOUT = 10; // 默认10分钟
@@ -43,22 +43,22 @@ namespace Constants {
     // 默认请求参数 (JSON 格式)
     // 注意：stream 固定为 false，因为当前代码不支持流式解析，这里不配置 stream
     const QString DEFAULT_REQUEST_PARAMETERS = R"({
-    "temperature": 0.1,
+    "temperature": 0.5,
     "max_tokens": 8192,
     "cache_prompt": false,
-    "seed": -1
+    "enable_thinking": false
     })";
 
 
     // 默认图片预览模式 (0=整页, 1=同宽, 2=同高, 3=原大)
     const int DEFAULT_IMAGE_VIEW_MODE = 3;
 
-    // 【新增】字体大小默认值
+    // 字体大小默认值
     const int DEFAULT_RENDERER_FONT_SIZE = 16;   // Markdown 渲染区默认字体大小
-    const int DEFAULT_SOURCE_EDITOR_FONT_SIZE = 16; // Markdown 源码编辑区默认字体大小
+    const int DEFAULT_SOURCE_EDITOR_FONT_SIZE = 13; // Markdown 源码编辑区默认字体大小
 
 
-    // --- 新增：默认服务配置 ---
+    // --- 默认服务配置 ---
     // 提供两个默认服务配置示例
     const QString DEFAULT_SERVICE_1_NAME = "本地 OCR 服务";
     const QString DEFAULT_SERVICE_1_CMD = "llama-server -m /path/to/model.gguf --port 8080";
@@ -71,26 +71,26 @@ namespace Constants {
     // 服务切换模式: 0=仅保留一个, 1=保留全部运行
     const int DEFAULT_SERVICE_SWITCH_MODE = 0;
 
-    // 【新增】默认本地服务 ID 的配置键（仅用于初始化，实际存储在 settings 中）
+    // 默认本地服务 ID 的配置键（仅用于初始化，实际存储在 settings 中）
     const QString DEFAULT_LOCAL_SERVICE_ID = "";
 
 
-    // --- 新增：复制前外部处理脚本配置 ---
+    // --- 复制前外部处理脚本配置 ---
     const QString DEFAULT_TEXT_PROCESSOR_CMD = "";
     const QString DEFAULT_FORMULA_PROCESSOR_CMD = "";
     const QString DEFAULT_TABLE_PROCESSOR_CMD = "";
     const QString DEFAULT_PURE_MATH_PROCESSOR_CMD = "";
 
-    // --- 新增：复制前处理快捷键 (默认为空) ---
+    // --- 复制前处理快捷键 (默认为空) ---
     const QString SHORTCUT_TEXT_PROCESSOR = "";
     const QString SHORTCUT_FORMULA_PROCESSOR = "";
     const QString SHORTCUT_TABLE_PROCESSOR = "";
     const QString SHORTCUT_PURE_MATH_PROCESSOR = "";
 
-    // --- 新增：脚本启用开关默认值 ---
-    const bool DEFAULT_PROCESSOR_ENABLED = true; // 默认全开
+    // --- 脚本启用开关默认值 ---
+    const bool DEFAULT_PROCESSOR_ENABLED = false;
 
-    // 【新增】默认请求超时时间 (秒)
+    // 默认请求超时时间 (秒)
     const int DEFAULT_REQUEST_TIMEOUT = 30;
 }
 
