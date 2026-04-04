@@ -201,7 +201,19 @@ void AppController::setupConnections()
             return;
         }
 
-        if (!error.contains("Connection refused") && !error.contains("连接被拒绝")) {
+        // 【修改】扩大网络错误的判定范围，支持更多网络异常情况触发自动启动
+        // 只要包含网络错误关键词，都视为连接失败，尝试恢复
+        bool isNetworkError = error.contains("Connection refused") ||
+        error.contains("连接被拒绝") ||
+        error.contains("Network error") ||
+        error.contains("网络错误") ||
+        error.contains("Host not found") ||
+        error.contains("Connection closed") ||
+        error.contains("Timeout") ||
+        error.contains("unreachable"); // 超时强制中断也会触发
+
+        if (!isNetworkError) {
+            // 如果是业务逻辑错误（如认证失败、服务器返回 400/500 错误内容），则不自动重启服务
             emit recognitionFailed(error);
             return;
         }
@@ -223,6 +235,7 @@ void AppController::setupConnections()
                 emit recognitionFailed("服务连接失败，正在尝试启动服务...");
             }
         } else {
+            // 当前为全局默认模式
             if (m_settings->autoStartService()) {
                 QString defaultLocalId = m_settings->defaultLocalServiceId();
                 if (!defaultLocalId.isEmpty()) {
@@ -231,7 +244,12 @@ void AppController::setupConnections()
                         canTryRecover = true;
                         tryStartId = defaultLocalId;
                         tryStartCommand = p.startCommand;
+
+                        // 【新增】切换当前服务 ID 并更新 UI
+                        // 这样用户能看到界面上的“当前服务”自动从“全局默认”跳到了“本地服务”
                         m_settings->setCurrentServiceId(defaultLocalId);
+                        m_mainWindow->updateServiceSelector(m_settings->serviceProfiles(), defaultLocalId);
+
                         emit recognitionFailed("全局连接失败，正在切换并启动本地服务...");
                     }
                 }
