@@ -29,8 +29,11 @@
 #include <QLabel>
 #include <QComboBox>
 #include <QWidgetAction>
-#include <QCheckBox>  // 【新增】
-#include <QHBoxLayout> // 【新增】
+#include <QCheckBox>
+#include <QHBoxLayout>
+#include <QToolBar>
+#include <QToolButton>
+
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
 {
@@ -88,11 +91,34 @@ void MainWindow::setupUi()
 
 void MainWindow::setupMenuBar()
 {
-    QMenuBar* menuBar = new QMenuBar(this);
-    setMenuBar(menuBar);
+    // 1. 创建顶部工具栏替代菜单栏
+    m_mainToolBar = new QToolBar("MainToolBar", this);
+    addToolBar(Qt::TopToolBarArea, m_mainToolBar);
 
-    // --- 文件菜单  ---
-    QMenu* fileMenu = menuBar->addMenu("文件");
+    // 设置工具栏样式：不显示图标，只显示文字，且按钮不突出（像菜单一样）
+    m_mainToolBar->setToolButtonStyle(Qt::ToolButtonTextOnly);
+    m_mainToolBar->setMovable(false); // 禁止拖动
+    m_mainToolBar->setFloatable(false);
+
+    // 统一设置扁平样式，让 QToolButton 看起来像菜单标题
+    m_mainToolBar->setStyleSheet(R"(
+        QToolBar { spacing: 2px; padding: 0px; background: palette(window); border-bottom: 1px solid palette(mid); }
+        QToolButton { border: none; padding: 4px 6px; border-radius: 3px; background: transparent; }
+        QToolButton::menu-indicator { image: none; }
+        QToolButton:hover { background: palette(highlight); color: palette(highlightedText); }
+    )");
+
+    // 辅助函数：创建菜单按钮
+    auto createMenuButton = [this](const QString& text, QMenu* menu) -> QToolButton* {
+        QToolButton* btn = new QToolButton(this);
+        btn->setText(text);
+        btn->setMenu(menu);
+        btn->setPopupMode(QToolButton::InstantPopup); // 点击立即弹出菜单
+        return btn;
+    };
+
+    // --- 2. 文件菜单 ---
+    QMenu* fileMenu = new QMenu(this);
     fileMenu->addAction("打开图片", this, [this]() {
         QString file = QFileDialog::getOpenFileName(this, "选择图片", "", "Images (*.png *.jpg *.bmp)");
         if (!file.isEmpty()) emit imagePasted(QImage(file));
@@ -112,23 +138,24 @@ void MainWindow::setupMenuBar()
         fileMenu->addSeparator();
         fileMenu->addAction("退出", qApp, &QApplication::quit);
 
-        // --- 工具菜单 ---
-        QMenu* toolsMenu = menuBar->addMenu("工具");
+        m_mainToolBar->addWidget(createMenuButton("文件", fileMenu));
 
-        // 【新增】添加“复制当前图片”选项
+        // --- 3. 工具菜单 ---
+        QMenu* toolsMenu = new QMenu(this);
+        // 【新增】复制当前图片选项
         m_copyImageAction = toolsMenu->addAction("复制当前图片", this, &MainWindow::onCopyCurrentImage);
-        m_copyImageAction->setShortcut(QKeySequence::Copy); // 可选：也可以绑定快捷键，这里默认不给快捷键防止与默认复制冲突
-        m_copyImageAction->setEnabled(false); // 初始状态为禁用
+        m_copyImageAction->setEnabled(false); // 初始禁用
 
-        // --- 识别服务菜单  ---
-        QMenu* serviceMenu = menuBar->addMenu("识别服务");
+        m_mainToolBar->addWidget(createMenuButton("工具", toolsMenu));
 
+        // --- 4. 识别服务菜单 ---
+        QMenu* serviceMenu = new QMenu(this);
+
+        // 服务选择控件（嵌入菜单中）
         QWidget* serviceWidget = new QWidget();
         QHBoxLayout* layout = new QHBoxLayout(serviceWidget);
         layout->setContentsMargins(5, 0, 5, 0);
-
         layout->addWidget(new QLabel("当前服务:"));
-
         m_serviceSelector = new QComboBox();
         connect(m_serviceSelector, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int index){
             if (index < 0) return;
@@ -136,34 +163,37 @@ void MainWindow::setupMenuBar()
             emit serviceSelected(id);
         });
         layout->addWidget(m_serviceSelector);
-
-        m_serviceToggleBtn = new QPushButton("未启动"); // 默认文字
+        m_serviceToggleBtn = new QPushButton("未启动");
+        m_serviceToggleBtn->setStyleSheet("QPushButton { border: 1px solid palette(mid); padding: 0 4px; }"); // 按钮样式微调
         connect(m_serviceToggleBtn, &QPushButton::clicked, this, [this](){
             QString id = m_serviceSelector->currentData().toString();
             emit serviceToggleRequested(id);
         });
         layout->addWidget(m_serviceToggleBtn);
 
-        QWidgetAction* actionWidget = new QWidgetAction(serviceMenu);
-        actionWidget->setDefaultWidget(serviceWidget);
-        serviceMenu->addAction(actionWidget);
-
+        QWidgetAction* serviceWidgetAction = new QWidgetAction(serviceMenu);
+        serviceWidgetAction->setDefaultWidget(serviceWidget);
+        serviceMenu->addAction(serviceWidgetAction);
         serviceMenu->addSeparator();
 
-        m_stopAllServicesAction = serviceMenu->addAction("停止所有服务", this, [this](){
-            emit stopServiceRequested();
-        });
+        m_stopAllServicesAction = serviceMenu->addAction("停止所有服务", this, [this](){ emit stopServiceRequested(); });
         m_stopAllServicesAction->setEnabled(false);
 
-        // --- 设置菜单  ---
-        QMenu* settingsMenu = menuBar->addMenu("设置");
+        m_mainToolBar->addWidget(createMenuButton("识别服务", serviceMenu));
+
+        // --- 5. 设置菜单 ---
+        QMenu* settingsMenu = new QMenu(this);
         settingsMenu->addAction("首选项", this, [this](){ emit settingsTriggered(); });
 
+        m_mainToolBar->addWidget(createMenuButton("设置", settingsMenu));
 
-        // --- 新增：右侧脚本控制工具栏 ---
+        // --- 6. 脚本控制工具栏 (紧接着设置) ---
+        // 添加一个分隔符，视觉上区分菜单和工具
+        m_mainToolBar->addSeparator();
+
         QWidget* scriptWidget = new QWidget();
         QHBoxLayout* scriptLayout = new QHBoxLayout(scriptWidget);
-        scriptLayout->setContentsMargins(5, 0, 5, 0);
+        scriptLayout->setContentsMargins(0, 0, 0, 0);
         scriptLayout->setSpacing(5);
 
         m_scriptGlobalCheck = new QCheckBox("脚本");
@@ -188,23 +218,18 @@ void MainWindow::setupMenuBar()
         m_scriptPureMathCheck->setToolTip("启用纯数学公式脚本 (优先级最高)");
         scriptLayout->addWidget(m_scriptPureMathCheck);
 
-        // 使用 setCornerWidget 将其放在菜单栏右侧
-        menuBar->setCornerWidget(scriptWidget, Qt::TopRightCorner);
+        // 将脚本控件添加到工具栏
+        m_mainToolBar->addWidget(scriptWidget);
 
-        // 连接信号
+        // --- 7. 连接信号 ---
         SettingsManager* s = SettingsManager::instance();
-
-        // 双向绑定：UI -> Settings
         connect(m_scriptGlobalCheck, &QCheckBox::toggled, s, &SettingsManager::setAutoExternalProcessBeforeCopy);
         connect(m_scriptTextCheck, &QCheckBox::toggled, s, &SettingsManager::setTextProcessorEnabled);
         connect(m_scriptFormulaCheck, &QCheckBox::toggled, s, &SettingsManager::setFormulaProcessorEnabled);
         connect(m_scriptTableCheck, &QCheckBox::toggled, s, &SettingsManager::setTableProcessorEnabled);
         connect(m_scriptPureMathCheck, &QCheckBox::toggled, s, &SettingsManager::setPureMathProcessorEnabled);
 
-        // 初始化 UI 状态
         updateScriptCheckboxes();
-
-        // 监听设置变化更新 UI (例如在设置对话框修改后)
         connect(s, &SettingsManager::autoExternalProcessBeforeCopyChanged, this, &MainWindow::updateScriptCheckboxes);
 }
 

@@ -18,6 +18,8 @@ class MarkdownCopyBar;
 class QAction;
 class QComboBox;
 class QPushButton;
+class QToolBar;
+class QToolButton;
 
 class MainWindow : public QMainWindow
 {
@@ -93,18 +95,21 @@ private:
     QShortcut* m_pasteShortcut;
     MarkdownCopyBar* m_copyBar;
 
+    // 【修改】移除旧的菜单栏相关成员，改用 ToolBar
+    QToolBar* m_mainToolBar = nullptr;
+
+    // 这些变量保持不变，用于填充工具栏
     QComboBox* m_serviceSelector = nullptr;
     QPushButton* m_serviceToggleBtn = nullptr;
     QAction* m_stopAllServicesAction = nullptr;
+    QAction* m_copyImageAction = nullptr; // 移动到这里，方便管理
 
-    // 脚本处理控件
+    // 脚本处理控件保持不变
     QCheckBox* m_scriptGlobalCheck = nullptr;
     QCheckBox* m_scriptTextCheck = nullptr;
     QCheckBox* m_scriptFormulaCheck = nullptr;
     QCheckBox* m_scriptTableCheck = nullptr;
     QCheckBox* m_scriptPureMathCheck = nullptr;
-
-    QAction* m_copyImageAction = nullptr;
 };
 
 #endif // MAINWINDOW_H
