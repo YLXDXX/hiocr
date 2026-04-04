@@ -1,19 +1,17 @@
 // src/markdowncopybar.cpp
 #include "markdowncopybar.h"
 #include "settingsmanager.h"
+
+#include <QPlainTextEdit>
+#include <QRegularExpression>
 #include <QHBoxLayout>
 #include <QLabel>
-#include <QApplication>
-#include <QClipboard>
-#include <QRegularExpression>
-#include <QDebug>
-#include <QPlainTextEdit>
 
 MarkdownCopyBar::MarkdownCopyBar(QWidget* parent)
-: QWidget(parent), m_currentType(ContentType::MixedContent)
+: QWidget(parent), m_currentType(ContentType::MixedContent), m_originalRecognizeType(ContentType::Text)
 {
     setupUi();
-    m_processor = new CopyProcessor(this); // 初始化处理器
+    m_processor = new CopyProcessor(this);
 }
 
 void MarkdownCopyBar::setupUi()
@@ -51,6 +49,14 @@ void MarkdownCopyBar::setSourceEditor(QPlainTextEdit* editor)
     }
 }
 
+void MarkdownCopyBar::setOriginalRecognizeType(ContentType type)
+{
+    m_originalRecognizeType = type;
+    if (m_sourceEdit) {
+        updateButtonState(m_sourceEdit->toPlainText());
+    }
+}
+
 void MarkdownCopyBar::onSourceTextChanged()
 {
     if (!m_sourceEdit) return;
@@ -64,12 +70,8 @@ void MarkdownCopyBar::updateButtonState(const QString& content)
     bool isDisplayMath = trimmed.startsWith("$$") && trimmed.endsWith("$$");
     bool isInlineMath = (trimmed.startsWith("$") && trimmed.endsWith("$")) && !isDisplayMath;
 
-    // 【优化】类型判断逻辑，为 TODO 纯数学公式做准备
     if (isDisplayMath || isInlineMath) {
-        // 当前假设单公式场景
-        // TODO: 未来这里可以进一步分析是否是纯数学公式（通过简单正则或调用外部检查器）
         m_currentType = ContentType::Formula;
-
         if (trimmed.contains("\n\n") || trimmed.count("$$") > 2) {
             m_currentType = ContentType::MixedContent;
         }
@@ -77,19 +79,7 @@ void MarkdownCopyBar::updateButtonState(const QString& content)
         m_currentType = ContentType::MixedContent;
     }
 
-    if (m_currentType == ContentType::Formula) {
-        m_btnInline->setEnabled(true);
-        m_btnInline->setToolTip("复制为 $...$ 格式");
-    } else {
-        m_btnInline->setEnabled(false);
-        m_btnInline->setToolTip("混合内容不支持统一转为行内公式");
-    }
-}
-
-// 统一调用 Processor
-void MarkdownCopyBar::executeCopy(const QString& text)
-{
-    m_processor->processAndCopy(text, m_currentType);
+    m_btnInline->setEnabled(m_currentType == ContentType::Formula);
 }
 
 void MarkdownCopyBar::onCopyOriginal()
@@ -98,6 +88,7 @@ void MarkdownCopyBar::onCopyOriginal()
     QString content = m_sourceEdit->toPlainText().trimmed();
     QString finalText;
 
+    // 提取内容逻辑
     if (m_currentType == ContentType::Formula) {
         if (content.startsWith("$$") && content.endsWith("$$")) {
             finalText = content.mid(2, content.length() - 4).trimmed();
@@ -109,7 +100,22 @@ void MarkdownCopyBar::onCopyOriginal()
     } else {
         finalText = content;
     }
-    executeCopy(finalText);
+
+    // 【修复】逻辑优化
+    ContentType typeToUse = m_originalRecognizeType;
+
+    // 如果当前内容结构为单公式（m_currentType == Formula），则具有“纯公式”优先级
+    if (m_currentType == ContentType::Formula) {
+        SettingsManager* s = SettingsManager::instance();
+        // 检查是否配置了纯公式脚本
+        if (s->pureMathProcessorEnabled() && !s->pureMathProcessorCommand().isEmpty()) {
+            typeToUse = ContentType::PureMath;
+        }
+        // 如果未配置纯公式脚本，typeToUse 保持为 m_originalRecognizeType，
+        // 这样会自动回退到文字/公式/表格对应的脚本，符合需求。
+    }
+
+    m_processor->processAndCopy(finalText, typeToUse);
 }
 
 void MarkdownCopyBar::onCopyInline()
@@ -126,7 +132,11 @@ void MarkdownCopyBar::onCopyInline()
     } else {
         core = content;
     }
-    executeCopy("$" + core + "$");
+
+    // 【修复】传递原始识别类型，而不是强制 Formula
+    // CopyProcessor 会自动处理“纯公式检测”逻辑（因为这里带了 $ 包裹，会被检测为纯公式结构）
+    // 如果没有纯公式脚本，会回退到原始类型脚本。
+    m_processor->processAndCopy("$" + core + "$", m_originalRecognizeType);
 }
 
 void MarkdownCopyBar::onCopyDisplay()
@@ -173,5 +183,7 @@ void MarkdownCopyBar::onCopyDisplay()
         finalText = resultText;
     }
 
-    executeCopy(finalText);
+    // 【修复】传递原始识别类型，而不是强制 Formula
+    // 同上，CopyProcessor 会先尝试纯公式脚本（因为带了 $$ 包裹），回退时使用原始类型脚本。
+    m_processor->processAndCopy(finalText, m_originalRecognizeType);
 }

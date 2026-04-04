@@ -1,7 +1,6 @@
 #include "shortcuthandler.h"
 #include "settingsmanager.h"
 #include "globalshortcutmanager.h"
-#include "settingsmanager.h"
 
 #ifdef HAVE_KF6
 #include "kdeglobalshortcut.h"
@@ -18,42 +17,50 @@ ShortcutHandler::ShortcutHandler(QObject *parent) : QObject(parent)
 
 void ShortcutHandler::applyShortcuts()
 {
-    // 无论如何都更新本地快捷键，作为保底方案
     setupLocalShortcuts();
-    // 尝试设置全局快捷键（KDE 或 Wayland Portal）
     setupGlobalShortcuts();
 }
 
 void ShortcutHandler::setupLocalShortcuts()
 {
-    // 清理旧对象 (包括新增的 m_scExternalProcess)
+    // 辅助函数：清理旧快捷键
     auto cleanup = [](QShortcut*& ptr) {
         if (ptr) { delete ptr; ptr = nullptr; }
     };
+
+    // 清理旧的识别快捷键
     cleanup(m_scScreenshot);
     cleanup(m_scText);
     cleanup(m_scFormula);
     cleanup(m_scTable);
-    cleanup(m_scExternalProcess); // 【新增】
+
+    // 清理旧的处理脚本快捷键
+    cleanup(m_scTextProcessor);
+    cleanup(m_scFormulaProcessor);
+    cleanup(m_scTableProcessor);
+    cleanup(m_scPureMathProcessor);
 
     SettingsManager* s = SettingsManager::instance();
 
-    // 【修改】通用的创建函数：如果 key 为空则不创建
+    // 辅助函数：创建本地快捷键
     auto createLocal = [this](QString key, QShortcut*& ptr, auto slot) {
-        if (key.isEmpty()) return; // 空字符串 -> 取消绑定 (不创建对象)
-
+        if (key.isEmpty()) return;
         ptr = new QShortcut(QKeySequence(key), this);
         ptr->setContext(Qt::ApplicationShortcut);
         connect(ptr, &QShortcut::activated, this, slot);
     };
 
+    // 绑定识别快捷键
     createLocal(s->screenshotShortcut(), m_scScreenshot, &ShortcutHandler::screenshotRequested);
     createLocal(s->textRecognizeShortcut(), m_scText, &ShortcutHandler::textRecognizeRequested);
     createLocal(s->formulaRecognizeShortcut(), m_scFormula, &ShortcutHandler::formulaRecognizeRequested);
     createLocal(s->tableRecognizeShortcut(), m_scTable, &ShortcutHandler::tableRecognizeRequested);
 
-    // 【新增】注册外部程序快捷键
-    createLocal(s->externalProcessShortcut(), m_scExternalProcess, &ShortcutHandler::externalProcessRequested);
+    // 绑定处理脚本快捷键
+    createLocal(s->textProcessorShortcut(), m_scTextProcessor, &ShortcutHandler::textProcessorRequested);
+    createLocal(s->formulaProcessorShortcut(), m_scFormulaProcessor, &ShortcutHandler::formulaProcessorRequested);
+    createLocal(s->tableProcessorShortcut(), m_scTableProcessor, &ShortcutHandler::tableProcessorRequested);
+    createLocal(s->pureMathProcessorShortcut(), m_scPureMathProcessor, &ShortcutHandler::pureMathProcessorRequested);
 }
 
 void ShortcutHandler::setupGlobalShortcuts()
@@ -66,21 +73,29 @@ void ShortcutHandler::setupGlobalShortcuts()
         disconnect(ks, nullptr, this, nullptr);
 
         connect(ks, &KdeGlobalShortcut::activated, this, [this](const QString& id) {
+            // 识别
             if (id == "screenshot") emit screenshotRequested();
             else if (id == "text_recognize") emit textRecognizeRequested();
             else if (id == "formula_recognize") emit formulaRecognizeRequested();
             else if (id == "table_recognize") emit tableRecognizeRequested();
-            // 【新增】处理外部程序快捷键
-            else if (id == "external_process") emit externalProcessRequested();
+            // 处理脚本
+            else if (id == "text_processor") emit textProcessorRequested();
+            else if (id == "formula_processor") emit formulaProcessorRequested();
+            else if (id == "table_processor") emit tableProcessorRequested();
+            else if (id == "pure_math_processor") emit pureMathProcessorRequested();
         });
 
             SettingsManager* s = SettingsManager::instance();
+            // 注册识别
             ks->registerShortcut("screenshot", "Screenshot", s->screenshotShortcut());
-            ks->registerShortcut("text_recognize", "Text", s->textRecognizeShortcut());
-            ks->registerShortcut("formula_recognize", "Formula", s->formulaRecognizeShortcut());
-            ks->registerShortcut("table_recognize", "Table", s->tableRecognizeShortcut());
-            // 【新增】注册外部程序快捷键
-            ks->registerShortcut("external_process", "External Process", s->externalProcessShortcut());
+            ks->registerShortcut("text_recognize", "Text Recognize", s->textRecognizeShortcut());
+            ks->registerShortcut("formula_recognize", "Formula Recognize", s->formulaRecognizeShortcut());
+            ks->registerShortcut("table_recognize", "Table Recognize", s->tableRecognizeShortcut());
+            // 注册处理脚本
+            ks->registerShortcut("text_processor", "Text Processor", s->textProcessorShortcut());
+            ks->registerShortcut("formula_processor", "Formula Processor", s->formulaProcessorShortcut());
+            ks->registerShortcut("table_processor", "Table Processor", s->tableProcessorShortcut());
+            ks->registerShortcut("pure_math_processor", "Pure Math Processor", s->pureMathProcessorShortcut());
 
             ks->startListening();
             return;
@@ -93,21 +108,28 @@ void ShortcutHandler::setupGlobalShortcuts()
         disconnect(gsm, nullptr, this, nullptr);
 
         connect(gsm, &GlobalShortcutManager::activated, this, [this](const QString& id) {
+            // 识别
             if (id == "screenshot") emit screenshotRequested();
             else if (id == "text_recognize") emit textRecognizeRequested();
             else if (id == "formula_recognize") emit formulaRecognizeRequested();
             else if (id == "table_recognize") emit tableRecognizeRequested();
-            // 【新增】处理外部程序快捷键
-            else if (id == "external_process") emit externalProcessRequested();
+            // 处理脚本
+            else if (id == "text_processor") emit textProcessorRequested();
+            else if (id == "formula_processor") emit formulaProcessorRequested();
+            else if (id == "table_processor") emit tableProcessorRequested();
+            else if (id == "pure_math_processor") emit pureMathProcessorRequested();
         });
 
             SettingsManager* s = SettingsManager::instance();
             gsm->registerShortcut("screenshot", "Screenshot", s->screenshotShortcut());
-            gsm->registerShortcut("text_recognize", "Text", s->textRecognizeShortcut());
-            gsm->registerShortcut("formula_recognize", "Formula", s->formulaRecognizeShortcut());
-            gsm->registerShortcut("table_recognize", "Table", s->tableRecognizeShortcut());
-            // 【新增】注册外部程序快捷键
-            gsm->registerShortcut("external_process", "External Process", s->externalProcessShortcut());
+            gsm->registerShortcut("text_recognize", "Text Recognize", s->textRecognizeShortcut());
+            gsm->registerShortcut("formula_recognize", "Formula Recognize", s->formulaRecognizeShortcut());
+            gsm->registerShortcut("table_recognize", "Table Recognize", s->tableRecognizeShortcut());
+
+            gsm->registerShortcut("text_processor", "Text Processor", s->textProcessorShortcut());
+            gsm->registerShortcut("formula_processor", "Formula Processor", s->formulaProcessorShortcut());
+            gsm->registerShortcut("table_processor", "Table Processor", s->tableProcessorShortcut());
+            gsm->registerShortcut("pure_math_processor", "Pure Math Processor", s->pureMathProcessorShortcut());
 
             gsm->startListening();
     }

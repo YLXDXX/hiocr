@@ -6,6 +6,7 @@
 #include "imageprocessor.h"
 #include "screenshotareaselector.h"
 #include "settingsmanager.h"
+#include "copyprocessor.h"
 #include "markdowncopybar.h"
 
 #include <QSplitter>
@@ -28,6 +29,8 @@
 #include <QLabel>
 #include <QComboBox>
 #include <QWidgetAction>
+#include <QCheckBox>  // 【新增】
+#include <QHBoxLayout> // 【新增】
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
 {
@@ -109,7 +112,6 @@ void MainWindow::setupMenuBar()
         fileMenu->addAction("退出", qApp, &QApplication::quit);
 
         QMenu* toolsMenu = menuBar->addMenu("工具");
-        toolsMenu->addAction("外部程序处理并复制", this, &MainWindow::onExternalProcessTriggered);
 
         // 【修改】识别服务菜单
         QMenu* serviceMenu = menuBar->addMenu("识别服务");
@@ -148,6 +150,54 @@ void MainWindow::setupMenuBar()
 
         QMenu* settingsMenu = menuBar->addMenu("设置");
         settingsMenu->addAction("首选项", this, [this](){ emit settingsTriggered(); });
+
+
+        // --- 新增：右侧脚本控制工具栏 ---
+        QWidget* scriptWidget = new QWidget();
+        QHBoxLayout* scriptLayout = new QHBoxLayout(scriptWidget);
+        scriptLayout->setContentsMargins(5, 0, 5, 0);
+        scriptLayout->setSpacing(5);
+
+        m_scriptGlobalCheck = new QCheckBox("脚本");
+        m_scriptGlobalCheck->setToolTip("全局启用/禁用复制前自动调用脚本");
+        scriptLayout->addWidget(m_scriptGlobalCheck);
+
+        scriptLayout->addWidget(new QLabel("|"));
+
+        m_scriptTextCheck = new QCheckBox("文字");
+        m_scriptTextCheck->setToolTip("启用文字脚本");
+        scriptLayout->addWidget(m_scriptTextCheck);
+
+        m_scriptFormulaCheck = new QCheckBox("公式");
+        m_scriptFormulaCheck->setToolTip("启用公式脚本");
+        scriptLayout->addWidget(m_scriptFormulaCheck);
+
+        m_scriptTableCheck = new QCheckBox("表格");
+        m_scriptTableCheck->setToolTip("启用表格脚本");
+        scriptLayout->addWidget(m_scriptTableCheck);
+
+        m_scriptPureMathCheck = new QCheckBox("纯公式");
+        m_scriptPureMathCheck->setToolTip("启用纯数学公式脚本 (优先级最高)");
+        scriptLayout->addWidget(m_scriptPureMathCheck);
+
+        // 使用 setCornerWidget 将其放在菜单栏右侧
+        menuBar->setCornerWidget(scriptWidget, Qt::TopRightCorner);
+
+        // 连接信号
+        SettingsManager* s = SettingsManager::instance();
+
+        // 双向绑定：UI -> Settings
+        connect(m_scriptGlobalCheck, &QCheckBox::toggled, s, &SettingsManager::setAutoExternalProcessBeforeCopy);
+        connect(m_scriptTextCheck, &QCheckBox::toggled, s, &SettingsManager::setTextProcessorEnabled);
+        connect(m_scriptFormulaCheck, &QCheckBox::toggled, s, &SettingsManager::setFormulaProcessorEnabled);
+        connect(m_scriptTableCheck, &QCheckBox::toggled, s, &SettingsManager::setTableProcessorEnabled);
+        connect(m_scriptPureMathCheck, &QCheckBox::toggled, s, &SettingsManager::setPureMathProcessorEnabled);
+
+        // 初始化 UI 状态
+        updateScriptCheckboxes();
+
+        // 监听设置变化更新 UI (例如在设置对话框修改后)
+        connect(s, &SettingsManager::autoExternalProcessBeforeCopyChanged, this, &MainWindow::updateScriptCheckboxes);
 }
 
 void MainWindow::setupConnections()
@@ -155,7 +205,10 @@ void MainWindow::setupConnections()
     connect(m_markdownSource, &QPlainTextEdit::textChanged, this, &MainWindow::onMarkdownSourceChanged);
     connect(m_pasteShortcut, &QShortcut::activated, this, &MainWindow::onPasteImage);
     connect(m_promptBar, &PromptBar::recognizeRequested, this, &MainWindow::onPromptBarRecognize);
-    connect(m_promptBar, &PromptBar::autoRecognizeRequested, this, &MainWindow::onPromptBarAutoRecognize);
+    connect(m_promptBar, &PromptBar::autoRecognizeRequested, this, [this](const QString& prompt, ContentType type){
+        QString base64 = m_imageView->currentBase64();
+        emit typedRecognizeRequested(prompt, base64, type);
+    });
 }
 
 void MainWindow::setImage(const QImage& image) { m_imageView->setImage(image); }
@@ -259,47 +312,62 @@ void MainWindow::onPasteImage() {
 }
 
 void MainWindow::onMarkdownSourceChanged() { m_markdownRenderer->setMarkdown(m_markdownSource->toPlainText()); }
-void MainWindow::onPromptBarRecognize() { emit recognizeRequested(m_promptBar->prompt(), m_imageView->currentBase64()); }
+void MainWindow::onPromptBarRecognize()
+{
+    QString currentPrompt = m_promptBar->prompt();
+    emit recognizeRequested(currentPrompt, m_imageView->currentBase64());
+}
 void MainWindow::onPromptBarAutoRecognize(const QString& prompt) { emit recognizeRequested(prompt, m_imageView->currentBase64()); }
 
-void MainWindow::onExternalProcessTriggered()
+// 【新增】手动触发脚本处理的实现
+void MainWindow::onManualProcessorTriggered(ContentType type)
 {
-    QString command = SettingsManager::instance()->externalProcessorCommand();
-    if (command.isEmpty()) {
-        QMessageBox::warning(this, "提示", "未配置外部处理程序。\n请在 设置 -> 外部处理程序 中配置命令。");
+    QString currentText = currentMarkdownSource();
+    if (currentText.isEmpty()) {
+        statusBar()->showMessage("内容为空，无法处理。", 3000);
         return;
     }
-    QString currentText = m_markdownSource->toPlainText();
-    if (currentText.isEmpty()) { QMessageBox::information(this, "提示", "内容为空。"); return; }
 
-    QProcess* process = new QProcess(this);
-    connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), this, &MainWindow::onExternalProcessFinished);
-    process->startCommand(command);
-    process->write(currentText.toUtf8());
-    process->closeWriteChannel();
+    // 发送信号给 AppController，让 Controller 处理具体逻辑
+    emit manualProcessRequested(type);
 }
 
-void MainWindow::onExternalProcessFinished(int exitCode, QProcess::ExitStatus exitStatus)
+void MainWindow::updateScriptCheckboxes()
 {
-    QProcess* process = qobject_cast<QProcess*>(sender());
-    if (!process) return;
-    if (exitStatus != QProcess::NormalExit || exitCode != 0) {
-        QString error = process->readAllStandardError();
-        if (error.isEmpty()) error = "进程异常退出。";
-        QMessageBox::critical(this, "处理失败", error);
-    } else {
-        QString result = QString::fromUtf8(process->readAllStandardOutput());
-        if (!result.isEmpty()) {
-            QApplication::clipboard()->setText(result);
-            statusBar()->showMessage("已处理并复制", 3000);
-        }
+    SettingsManager* s = SettingsManager::instance();
+
+    // 防止信号循环
+    m_scriptGlobalCheck->blockSignals(true);
+    m_scriptTextCheck->blockSignals(true);
+    m_scriptFormulaCheck->blockSignals(true);
+    m_scriptTableCheck->blockSignals(true);
+    m_scriptPureMathCheck->blockSignals(true);
+
+    m_scriptGlobalCheck->setChecked(s->autoExternalProcessBeforeCopy());
+    m_scriptTextCheck->setChecked(s->textProcessorEnabled());
+    m_scriptFormulaCheck->setChecked(s->formulaProcessorEnabled());
+    m_scriptTableCheck->setChecked(s->tableProcessorEnabled());
+    m_scriptPureMathCheck->setChecked(s->pureMathProcessorEnabled());
+
+    m_scriptGlobalCheck->blockSignals(false);
+    m_scriptTextCheck->blockSignals(false);
+    m_scriptFormulaCheck->blockSignals(false);
+    m_scriptTableCheck->blockSignals(false);
+    m_scriptPureMathCheck->blockSignals(false);
+}
+
+QString MainWindow::currentMarkdownSource() const
+{
+    return m_markdownSource ? m_markdownSource->toPlainText() : QString();
+}
+bool MainWindow::hasImage() const
+{
+    return m_imageView && m_imageView->hasImage();
+}
+
+void MainWindow::setRecognizeType(ContentType type)
+{
+    if (m_copyBar) {
+        m_copyBar->setOriginalRecognizeType(type);
     }
-    process->deleteLater();
-}
-
-void MainWindow::copyToClipboard(const QString& text)
-{
-    if (text.isEmpty()) return;
-    if (m_copyBar) m_copyBar->executeCopy(text);
-    else QApplication::clipboard()->setText(text);
 }

@@ -70,6 +70,22 @@ namespace Constants {
 
     // 【新增】默认本地服务 ID 的配置键（仅用于初始化，实际存储在 settings 中）
     const QString DEFAULT_LOCAL_SERVICE_ID = "";
+
+
+    // --- 新增：复制前外部处理脚本配置 ---
+    const QString DEFAULT_TEXT_PROCESSOR_CMD = "";
+    const QString DEFAULT_FORMULA_PROCESSOR_CMD = "";
+    const QString DEFAULT_TABLE_PROCESSOR_CMD = "";
+    const QString DEFAULT_PURE_MATH_PROCESSOR_CMD = "";
+
+    // --- 新增：复制前处理快捷键 (默认为空) ---
+    const QString SHORTCUT_TEXT_PROCESSOR = "";
+    const QString SHORTCUT_FORMULA_PROCESSOR = "";
+    const QString SHORTCUT_TABLE_PROCESSOR = "";
+    const QString SHORTCUT_PURE_MATH_PROCESSOR = "";
+
+    // --- 新增：脚本启用开关默认值 ---
+    const bool DEFAULT_PROCESSOR_ENABLED = true; // 默认全开
 }
 
 #endif // CONSTANTS_H

@@ -81,9 +81,17 @@ void SettingsDialog::setupUi()
     m_serviceFormulaPromptEdit = new QLineEdit();
     m_serviceTablePromptEdit = new QLineEdit();
 
+    // 【新增】
+    m_serviceApiKeyEdit = new QLineEdit();
+    m_serviceApiKeyEdit->setEchoMode(QLineEdit::Password); // 密码模式
+    m_serviceModelEdit = new QLineEdit();
+    m_serviceModelEdit->setPlaceholderText("例如: qwen-vl-plus, deepseek-chat");
+
     editLayout->addRow("服务名称:", m_serviceNameEdit);
     editLayout->addRow("启动命令:", m_serviceCommandEdit);
     editLayout->addRow("服务地址:", m_serviceUrlEdit);
+    editLayout->addRow("API Key:", m_serviceApiKeyEdit);     // 【新增】
+    editLayout->addRow("模型名称:", m_serviceModelEdit);     // 【新增】
     editLayout->addRow("文字提示词:", m_serviceTextPromptEdit);
     editLayout->addRow("公式提示词:", m_serviceFormulaPromptEdit);
     editLayout->addRow("表格提示词:", m_serviceTablePromptEdit);
@@ -125,13 +133,11 @@ void SettingsDialog::setupUi()
     m_scTextEdit = new ShortcutEdit();
     m_scFormulaEdit = new ShortcutEdit();
     m_scTableEdit = new ShortcutEdit();
-    m_scExternalProcessEdit = new ShortcutEdit();
 
     shortcutLayout->addRow("截图:", m_scScreenshotEdit);
     shortcutLayout->addRow("文字识别:", m_scTextEdit);
     shortcutLayout->addRow("公式识别:", m_scFormulaEdit);
     shortcutLayout->addRow("表格识别:", m_scTableEdit);
-    shortcutLayout->addRow("外部程序处理:", m_scExternalProcessEdit);
     mainLayout->addWidget(shortcutGroup);
 
     // --- 显示设置 ---
@@ -182,13 +188,52 @@ void SettingsDialog::setupUi()
 
     mainLayout->addWidget(behaviorGroup);
 
-    // --- 外部程序设置 ---
-    QGroupBox* externalGroup = new QGroupBox("外部处理程序");
-    QVBoxLayout* externalLayout = new QVBoxLayout(externalGroup);
-    m_externalProcessorEdit = new QLineEdit();
-    m_externalProcessorEdit->setPlaceholderText("例如: python3 /path/to/script.py");
-    externalLayout->addWidget(m_externalProcessorEdit);
-    mainLayout->addWidget(externalGroup);
+    // --- 新增：复制前外部程序处理设置 ---
+    QGroupBox* processorGroup = new QGroupBox("复制前外部程序处理");
+    QVBoxLayout* processorLayout = new QVBoxLayout(processorGroup);
+
+    // 说明文字
+    QLabel* procHint = new QLabel("配置不同类型内容在复制前调用的外部脚本。\n脚本从标准输入读取文本，处理后将结果输出到标准输出。");
+    procHint->setWordWrap(true);
+    processorLayout->addWidget(procHint);
+
+    // 文字处理
+    QGroupBox* textGroup = new QGroupBox("文字处理");
+    QFormLayout* textLayout = new QFormLayout(textGroup);
+    m_textProcessorEdit = new QLineEdit();
+    m_textProcessorScEdit = new ShortcutEdit();
+    textLayout->addRow("命令:", m_textProcessorEdit);
+    textLayout->addRow("快捷键:", m_textProcessorScEdit);
+    processorLayout->addWidget(textGroup);
+
+    // 公式处理
+    QGroupBox* formulaGroup = new QGroupBox("公式处理");
+    QFormLayout* formulaLayout = new QFormLayout(formulaGroup);
+    m_formulaProcessorEdit = new QLineEdit();
+    m_formulaProcessorScEdit = new ShortcutEdit();
+    formulaLayout->addRow("命令:", m_formulaProcessorEdit);
+    formulaLayout->addRow("快捷键:", m_formulaProcessorScEdit);
+    processorLayout->addWidget(formulaGroup);
+
+    // 表格处理
+    QGroupBox* tableGroup = new QGroupBox("表格处理");
+    QFormLayout* tableLayout = new QFormLayout(tableGroup);
+    m_tableProcessorEdit = new QLineEdit();
+    m_tableProcessorScEdit = new ShortcutEdit();
+    tableLayout->addRow("命令:", m_tableProcessorEdit);
+    tableLayout->addRow("快捷键:", m_tableProcessorScEdit);
+    processorLayout->addWidget(tableGroup);
+
+    // 纯数学公式处理
+    QGroupBox* pureMathGroup = new QGroupBox("纯数学公式处理 (优先级最高)");
+    QFormLayout* pureMathLayout = new QFormLayout(pureMathGroup);
+    m_pureMathProcessorEdit = new QLineEdit();
+    m_pureMathProcessorScEdit = new ShortcutEdit();
+    pureMathLayout->addRow("命令:", m_pureMathProcessorEdit);
+    pureMathLayout->addRow("快捷键:", m_pureMathProcessorScEdit);
+    processorLayout->addWidget(pureMathGroup);
+
+    mainLayout->addWidget(processorGroup);
 
     // --- 高级参数 ---
     QGroupBox* advancedGroup = new QGroupBox("高级请求参数");
@@ -246,6 +291,8 @@ void SettingsDialog::setupUi()
             m_serviceNameEdit->setText(p.name);
             m_serviceCommandEdit->setText(p.startCommand);
             m_serviceUrlEdit->setText(p.serverUrl);
+            m_serviceApiKeyEdit->setText(p.apiKey);
+            m_serviceModelEdit->setText(p.modelName);
             m_serviceTextPromptEdit->setText(p.textPrompt);
             m_serviceFormulaPromptEdit->setText(p.formulaPrompt);
             m_serviceTablePromptEdit->setText(p.tablePrompt);
@@ -306,24 +353,41 @@ void SettingsDialog::loadSettings()
 
     m_serviceIdleTimeoutSpin->setValue(s->serviceIdleTimeout());
 
+    // 加载识别快捷键
     m_scScreenshotEdit->setText(s->screenshotShortcut());
     m_scTextEdit->setText(s->textRecognizeShortcut());
     m_scFormulaEdit->setText(s->formulaRecognizeShortcut());
     m_scTableEdit->setText(s->tableRecognizeShortcut());
-    m_scExternalProcessEdit->setText(s->externalProcessShortcut());
 
     m_autoUseLastPromptCheck->setChecked(s->autoUseLastPrompt());
     m_displayMathCombo->setCurrentIndex(m_displayMathCombo->findData(s->displayMathEnvironment()));
     m_mathFontCombo->setCurrentIndex(m_mathFontCombo->findData(s->mathFont()));
-    m_externalProcessorEdit->setText(s->externalProcessorCommand());
+
+    // 【删除旧代码】
+    // m_externalProcessorEdit->setText(s->externalProcessorCommand());
+    // m_scExternalProcessEdit->setText(s->externalProcessShortcut());
+
     m_autoRecognizeCheck->setChecked(s->autoRecognizeOnScreenshot());
     m_autoCopyCheck->setChecked(s->autoCopyResult());
     m_requestParamsEdit->setPlainText(s->requestParameters());
     m_autoExternalProcessCheck->setChecked(s->autoExternalProcessBeforeCopy());
+
+    // 【新增】加载分类型脚本配置
+    m_textProcessorEdit->setText(s->textProcessorCommand());
+    m_textProcessorScEdit->setText(s->textProcessorShortcut());
+
+    m_formulaProcessorEdit->setText(s->formulaProcessorCommand());
+    m_formulaProcessorScEdit->setText(s->formulaProcessorShortcut());
+
+    m_tableProcessorEdit->setText(s->tableProcessorCommand());
+    m_tableProcessorScEdit->setText(s->tableProcessorShortcut());
+
+    m_pureMathProcessorEdit->setText(s->pureMathProcessorCommand());
+    m_pureMathProcessorScEdit->setText(s->pureMathProcessorShortcut());
+
     m_rendererFontSpin->setValue(s->rendererFontSize());
     m_sourceEditorFontSpin->setValue(s->sourceEditorFontSize());
 
-    // 【新增】加载自动启动设置
     m_autoStartServiceCheck->setChecked(s->autoStartService());
 }
 
@@ -342,6 +406,8 @@ void SettingsDialog::saveCurrentServiceToTemp(int row)
     p.name = m_serviceNameEdit->text();
     p.startCommand = m_serviceCommandEdit->text();
     p.serverUrl = m_serviceUrlEdit->text();
+    p.apiKey = m_serviceApiKeyEdit->text();
+    p.modelName = m_serviceModelEdit->text();
     p.textPrompt = m_serviceTextPromptEdit->text();
     p.formulaPrompt = m_serviceFormulaPromptEdit->text();
     p.tablePrompt = m_serviceTablePromptEdit->text();
@@ -426,16 +492,28 @@ void SettingsDialog::onSaveClicked()
     s->setAutoUseLastPrompt(m_autoUseLastPromptCheck->isChecked());
     s->setDisplayMathEnvironment(m_displayMathCombo->currentData().toString());
     s->setMathFont(m_mathFontCombo->currentData().toString());
-    s->setExternalProcessorCommand(m_externalProcessorEdit->text());
+
     s->setAutoRecognizeOnScreenshot(m_autoRecognizeCheck->isChecked());
     s->setAutoCopyResult(m_autoCopyCheck->isChecked());
     s->setRequestParameters(paramsText);
     s->setAutoExternalProcessBeforeCopy(m_autoExternalProcessCheck->isChecked());
-    s->setExternalProcessShortcut(m_scExternalProcessEdit->text());
+
+    // 【新增】保存分类型脚本配置
+    s->setTextProcessorCommand(m_textProcessorEdit->text());
+    s->setTextProcessorShortcut(m_textProcessorScEdit->text());
+
+    s->setFormulaProcessorCommand(m_formulaProcessorEdit->text());
+    s->setFormulaProcessorShortcut(m_formulaProcessorScEdit->text());
+
+    s->setTableProcessorCommand(m_tableProcessorEdit->text());
+    s->setTableProcessorShortcut(m_tableProcessorScEdit->text());
+
+    s->setPureMathProcessorCommand(m_pureMathProcessorEdit->text());
+    s->setPureMathProcessorShortcut(m_pureMathProcessorScEdit->text());
+
     s->setRendererFontSize(m_rendererFontSpin->value());
     s->setSourceEditorFontSize(m_sourceEditorFontSpin->value());
 
-    // 【新增】保存自动启动设置
     s->setAutoStartService(m_autoStartServiceCheck->isChecked());
 
     accept();
@@ -459,11 +537,22 @@ void SettingsDialog::onRestoreDefaults()
     m_serviceIdleTimeoutSpin->setValue(Constants::DEFAULT_SERVICE_IDLE_TIMEOUT);
     m_requestParamsEdit->setPlainText(Constants::DEFAULT_REQUEST_PARAMETERS);
     m_autoExternalProcessCheck->setChecked(false);
-    m_scExternalProcessEdit->setText(Constants::SHORTCUT_EXTERNAL_PROCESS);
+
     m_rendererFontSpin->setValue(Constants::DEFAULT_RENDERER_FONT_SIZE);
     m_sourceEditorFontSpin->setValue(Constants::DEFAULT_SOURCE_EDITOR_FONT_SIZE);
-    m_externalProcessorEdit->clear();
 
-    // 【新增】恢复默认自动启动设置
+    // 【新增】恢复新变量默认值
+    m_textProcessorEdit->clear();
+    m_textProcessorScEdit->clear();
+
+    m_formulaProcessorEdit->clear();
+    m_formulaProcessorScEdit->clear();
+
+    m_tableProcessorEdit->clear();
+    m_tableProcessorScEdit->clear();
+
+    m_pureMathProcessorEdit->clear();
+    m_pureMathProcessorScEdit->clear();
+
     m_autoStartServiceCheck->setChecked(Constants::DEFAULT_AUTO_START_SERVICE);
 }

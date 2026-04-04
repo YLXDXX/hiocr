@@ -21,13 +21,13 @@ void RecognitionManager::recognize(const QString& prompt, const QString& base64I
     m_isBusy = true;
     emit busyStateChanged(true);
 
-    // 构建请求配置
     RequestConfig config;
     config.base64Image = base64Image;
     config.prompt = prompt;
-    config.serverUrl = m_serverUrl; // 使用内部缓存的 URL
+    config.serverUrl = m_serverUrl;
+    config.apiKey = m_apiKey;         // 【新增】
+    config.model = m_modelName;       // 【新增】
 
-    // 发送请求
     m_networkManager->sendRequest(config);
 }
 
@@ -80,12 +80,6 @@ void RecognitionManager::onNetworkFinished(const QString& result, bool success, 
     }
 }
 
-// 【新增】实现 setServerUrl
-void RecognitionManager::setServerUrl(const QString& url)
-{
-    if (m_networkManager) {
-        // NetworkManager 不再需要单独设置 URL，通过 config 传入
-        // 但为了保持缓存，我们在 Manager 里存一份
-        m_serverUrl = url;
-    }
-}
+void RecognitionManager::setServerUrl(const QString& url) { m_serverUrl = url; }
+void RecognitionManager::setApiKey(const QString& key) { m_apiKey = key; }
+void RecognitionManager::setModelName(const QString& name) { m_modelName = name; }

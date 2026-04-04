@@ -13,7 +13,6 @@ NetworkManager::NetworkManager(QObject* parent) : QObject(parent) {
     m_manager = new QNetworkAccessManager(this);
 }
 
-// 【重构】核心请求函数
 void NetworkManager::sendRequest(const RequestConfig& config)
 {
     if (m_currentReply) {
@@ -49,7 +48,12 @@ void NetworkManager::sendRequest(const RequestConfig& config)
     json["messages"] = messages;
     json["stream"] = false; // 强制 false
 
-    // 合并用户自定义参数
+    // 【新增】设置模型名称 (如果配置中有)
+    if (!config.model.isEmpty()) {
+        json["model"] = config.model;
+    }
+
+    // 合并用户自定义参数 (高级参数)
     QString paramsJsonStr = SettingsManager::instance()->requestParameters();
     if (!paramsJsonStr.isEmpty()) {
         QJsonParseError err;
@@ -57,12 +61,13 @@ void NetworkManager::sendRequest(const RequestConfig& config)
         if (err.error == QJsonParseError::NoError && paramsDoc.isObject()) {
             QJsonObject paramsObj = paramsDoc.object();
             for (auto it = paramsObj.constBegin(); it != paramsObj.constEnd(); ++it) {
-                json[it.key()] = it.value();
+                // 不覆盖已设置的值 (如 messages, model)，除非用户明确要覆盖
+                if (!json.contains(it.key())) {
+                    json[it.key()] = it.value();
+                }
             }
         }
     }
-
-    // TODO: 在此处理 Model 覆盖逻辑 (if (!config.model.isEmpty()) json["model"] = config.model;)
 
     // --- 3. 构建网络请求 ---
     QJsonDocument doc(json);
@@ -71,7 +76,7 @@ void NetworkManager::sendRequest(const RequestConfig& config)
     QNetworkRequest request(url);
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
 
-    // 【新增】支持 API Key (TODO)
+    // 【新增】支持 API Key 鉴权
     if (!config.apiKey.isEmpty()) {
         request.setRawHeader("Authorization", QString("Bearer %1").arg(config.apiKey).toUtf8());
     }
@@ -84,30 +89,61 @@ void NetworkManager::onReplyFinished()
 {
     if (!m_currentReply) return;
 
-    // ... 原有的解析逻辑保持不变 ...
-    // 只需注意 m_currentReply->error() 和 readAll() 的处理
-    // 这里省略重复代码，仅展示框架
+    QNetworkReply* reply = m_currentReply;
+    m_currentReply = nullptr; // 清空成员指针，后面通过 reply 操作
 
-    if (m_currentReply->error() != QNetworkReply::NoError) {
-        emit requestFinished(QString(), false, m_currentReply->errorString());
-    } else {
-        QByteArray response = m_currentReply->readAll();
-        // ... 解析 JSON ...
-        QJsonParseError parseError;
-        QJsonDocument doc = QJsonDocument::fromJson(response, &parseError);
-        if (parseError.error != QJsonParseError::NoError) {
-            emit requestFinished(QString(), false, "JSON解析错误: " + parseError.errorString());
-        } else {
-            // ... 提取 content ...
-            QJsonObject obj = doc.object();
-            // ... 具体的 OpenAI 格式解析逻辑 ...
-            // 简单起见，假设提取到了 content
-            // QString content = ...;
-            // emit requestFinished(content, true, QString());
-            // 原有逻辑非常完善，这里不再赘述
+    // 检查网络错误
+    if (reply->error() != QNetworkReply::NoError) {
+        QString errorString = reply->errorString();
+
+        // 尝试读取返回的错误详情 (OpenAI 格式)
+        QByteArray errorData = reply->readAll();
+        QJsonParseError parseErr;
+        QJsonDocument errDoc = QJsonDocument::fromJson(errorData, &parseErr);
+        if (parseErr.error == QJsonParseError::NoError && errDoc.isObject()) {
+            QJsonObject errObj = errDoc.object();
+            if (errObj.contains("error")) {
+                QJsonObject errDetail = errObj["error"].toObject();
+                errorString = errDetail["message"].toString(errorString);
+            }
+        }
+
+        emit requestFinished(QString(), false, "网络错误: " + errorString);
+        reply->deleteLater();
+        return;
+    }
+
+    // 【关键修复】解析成功的返回数据
+    QByteArray response = reply->readAll();
+    reply->deleteLater();
+
+    QJsonParseError parseError;
+    QJsonDocument doc = QJsonDocument::fromJson(response, &parseError);
+
+    if (parseError.error != QJsonParseError::NoError) {
+        emit requestFinished(QString(), false, "JSON解析错误: " + parseError.errorString());
+        return;
+    }
+
+    QJsonObject obj = doc.object();
+
+    // 解析 OpenAI 格式的返回结果
+    // 结构: { "choices": [ { "message": { "content": "..." } } ] }
+    if (obj.contains("choices") && obj["choices"].isArray()) {
+        QJsonArray choices = obj["choices"].toArray();
+        if (!choices.isEmpty()) {
+            QJsonObject firstChoice = choices[0].toObject();
+            if (firstChoice.contains("message")) {
+                QJsonObject message = firstChoice["message"].toObject();
+                QString content = message["content"].toString();
+
+                // 成功获取内容
+                emit requestFinished(content, true, QString());
+                return;
+            }
         }
     }
 
-    m_currentReply->deleteLater();
-    m_currentReply = nullptr;
+    // 如果结构不匹配或为空，报错
+    emit requestFinished(QString(), false, "响应格式无效或无有效内容: " + QString::fromUtf8(response.left(200)));
 }

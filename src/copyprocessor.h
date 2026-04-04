@@ -5,13 +5,12 @@
 #include <QObject>
 #include <QProcess>
 
-// 定义内容类型，与 MarkdownCopyBar 解耦，供全局使用
 enum class ContentType {
     Text,           // 纯文本
     Formula,        // 单个公式
     Table,          // 表格
     MixedContent,   // 混合内容
-    PureMath        // 纯数学公式 (TODO 逻辑预留)
+    PureMath        // 纯数学公式 (通过内容检测)
 };
 
 class CopyProcessor : public QObject
@@ -20,11 +19,11 @@ class CopyProcessor : public QObject
 public:
     explicit CopyProcessor(QObject *parent = nullptr);
 
-    // 处理文本并写入剪贴板，根据类型自动选择脚本
-    void processAndCopy(const QString& text, ContentType type);
+    // 处理文本并写入剪贴板，根据类型和设置自动选择脚本
+    void processAndCopy(const QString& text, ContentType originalType);
 
-    // 直接执行指定命令（用于手动触发外部处理）
-    void executeCommand(const QString& command, const QString& text);
+    // 手动强制执行特定类型的处理 (用于快捷键调用)
+    void manualProcess(const QString& text, ContentType type);
 
 signals:
     void finished(const QString& result);
@@ -34,8 +33,14 @@ private slots:
     void onProcessFinished(int exitCode, QProcess::ExitStatus status);
 
 private:
+    // 判断文本内容是否为纯数学公式
+    bool isPureMathContent(const QString& text) const;
+    // 根据逻辑获取最终要执行的命令
+    QString getFinalCommand(ContentType originalType, const QString& text);
+
+    void executeCommand(const QString& command, const QString& text);
+
     QProcess* m_currentProcess = nullptr;
-    ContentType m_currentType;
     QString m_originalTextForFallback;
 };
 

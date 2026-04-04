@@ -10,15 +10,18 @@
 
 // 【新增】服务配置结构体
 struct ServiceProfile {
-    QString id;             // 唯一标识
-    QString name;           // 显示名称
-    QString startCommand;   // 启动命令
-    QString serverUrl;      // 服务地址
+    QString id;
+    QString name;
+    QString startCommand;
+    QString serverUrl;
     QString textPrompt;
     QString formulaPrompt;
     QString tablePrompt;
 
-    // 辅助函数：判断是否为空（即无配置项）
+    // 【新增】
+    QString apiKey;      // API 密钥
+    QString modelName;   // 模型名称 (如 qwen-plus, deepseek-chat)
+
     bool isEmpty() const { return id.isEmpty() && name.isEmpty(); }
 };
 
@@ -134,7 +137,8 @@ public:
     // 获取指定 ID 的服务配置
     ServiceProfile getServiceProfile(const QString& id) const;
 
-    // 【新增】针对不同类型的处理脚本配置接口 (为 TODO 准备)
+
+    // --- 分类型外部处理脚本配置 ---
     QString textProcessorCommand() const;
     void setTextProcessorCommand(const QString& cmd);
 
@@ -144,9 +148,34 @@ public:
     QString tableProcessorCommand() const;
     void setTableProcessorCommand(const QString& cmd);
 
-    // 【新增】纯数学公式脚本接口 (TODO 逻辑)
     QString pureMathProcessorCommand() const;
     void setPureMathProcessorCommand(const QString& cmd);
+
+    // --- 分类型外部处理脚本快捷键 ---
+    QString textProcessorShortcut() const;
+    void setTextProcessorShortcut(const QString& key);
+
+    QString formulaProcessorShortcut() const;
+    void setFormulaProcessorShortcut(const QString& key);
+
+    QString tableProcessorShortcut() const;
+    void setTableProcessorShortcut(const QString& key);
+
+    QString pureMathProcessorShortcut() const;
+    void setPureMathProcessorShortcut(const QString& key);
+
+    // --- 分类型脚本启用开关 (菜单栏 Checkbox 状态) ---
+    bool textProcessorEnabled() const;
+    void setTextProcessorEnabled(bool enabled);
+
+    bool formulaProcessorEnabled() const;
+    void setFormulaProcessorEnabled(bool enabled);
+
+    bool tableProcessorEnabled() const;
+    void setTableProcessorEnabled(bool enabled);
+
+    bool pureMathProcessorEnabled() const;
+    void setPureMathProcessorEnabled(bool enabled);
 
 signals:
     void serviceProfilesChanged();
@@ -181,6 +210,16 @@ signals:
 
     void rendererFontSizeChanged(int size);
     void sourceEditorFontSizeChanged(int size);
+
+    void textProcessorCommandChanged(const QString& cmd);
+    void formulaProcessorCommandChanged(const QString& cmd);
+    void tableProcessorCommandChanged(const QString& cmd);
+    void pureMathProcessorCommandChanged(const QString& cmd);
+
+    void textProcessorEnabledChanged(bool enabled);
+    void formulaProcessorEnabledChanged(bool enabled);
+    void tableProcessorEnabledChanged(bool enabled);
+    void pureMathProcessorEnabledChanged(bool enabled);
 
 private:
     explicit SettingsManager(QObject* parent = nullptr);

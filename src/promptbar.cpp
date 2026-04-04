@@ -89,17 +89,17 @@ void PromptBar::setCurrentPrompts(const QString& text, const QString& formula, c
 void PromptBar::onTextButton()
 {
     setPrompt(m_currentTextPrompt);
-    emit autoRecognizeRequested(m_currentTextPrompt);
+    emit autoRecognizeRequested(m_currentTextPrompt, ContentType::Text);
 }
 
 void PromptBar::onFormulaButton()
 {
     setPrompt(m_currentFormulaPrompt);
-    emit autoRecognizeRequested(m_currentFormulaPrompt);
+    emit autoRecognizeRequested(m_currentFormulaPrompt, ContentType::Formula);
 }
 
 void PromptBar::onTableButton()
 {
     setPrompt(m_currentTablePrompt);
-    emit autoRecognizeRequested(m_currentTablePrompt);
+    emit autoRecognizeRequested(m_currentTablePrompt, ContentType::Table);
 }

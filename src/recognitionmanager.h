@@ -1,4 +1,4 @@
-// src/recognitionmanager.h
+// // src/recognitionmanager.h
 
 #ifndef RECOGNITIONMANAGER_H
 #define RECOGNITIONMANAGER_H
@@ -20,6 +20,8 @@ public:
 
     // 【新增】提供设置 URL 的接口
     void setServerUrl(const QString& url);
+    void setApiKey(const QString& key);     // 【新增】
+    void setModelName(const QString& name); // 【新增】
 
     QString lastPrompt() const;
     void setLastPrompt(const QString& prompt);
@@ -45,6 +47,8 @@ private:
     bool m_autoUseLastPrompt = true;
     bool m_isBusy = false;
     QString m_serverUrl; // 【新增】用于缓存当前的 URL
+    QString m_apiKey;      // 【新增】
+    QString m_modelName;   // 【新增】
 };
 
 #endif // RECOGNITIONMANAGER_H

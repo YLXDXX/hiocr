@@ -35,13 +35,24 @@ private:
     void saveCurrentServiceToTemp(int row);
 
     QLineEdit* m_serverUrlEdit;
-    QLineEdit* m_externalProcessorEdit;
 
     ShortcutEdit* m_scScreenshotEdit;
     ShortcutEdit* m_scTextEdit;
     ShortcutEdit* m_scFormulaEdit;
     ShortcutEdit* m_scTableEdit;
-    ShortcutEdit* m_scExternalProcessEdit;
+
+    // --- 新增：脚本配置控件 ---
+    QLineEdit* m_textProcessorEdit;
+    ShortcutEdit* m_textProcessorScEdit;
+
+    QLineEdit* m_formulaProcessorEdit;
+    ShortcutEdit* m_formulaProcessorScEdit;
+
+    QLineEdit* m_tableProcessorEdit;
+    ShortcutEdit* m_tableProcessorScEdit;
+
+    QLineEdit* m_pureMathProcessorEdit;
+    ShortcutEdit* m_pureMathProcessorScEdit;
 
     QCheckBox* m_autoUseLastPromptCheck;
 
@@ -60,6 +71,8 @@ private:
     QLineEdit* m_serviceNameEdit;
     QLineEdit* m_serviceCommandEdit;
     QLineEdit* m_serviceUrlEdit;
+    QLineEdit* m_serviceApiKeyEdit;
+    QLineEdit* m_serviceModelEdit;
     QLineEdit* m_serviceTextPromptEdit;
     QLineEdit* m_serviceFormulaPromptEdit;
     QLineEdit* m_serviceTablePromptEdit;

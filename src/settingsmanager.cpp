@@ -169,6 +169,11 @@ QList<ServiceProfile> SettingsManager::serviceProfiles() const
         p.textPrompt = obj["text_prompt"].toString(Constants::PROMPT_TEXT);
         p.formulaPrompt = obj["formula_prompt"].toString(Constants::PROMPT_FORMULA);
         p.tablePrompt = obj["table_prompt"].toString(Constants::PROMPT_TABLE);
+
+        // 【新增】
+        p.apiKey = obj["api_key"].toString();
+        p.modelName = obj["model_name"].toString();
+
         list.append(p);
     }
     return list;
@@ -186,6 +191,11 @@ void SettingsManager::setServiceProfiles(const QList<ServiceProfile>& profiles)
         obj["text_prompt"] = p.textPrompt;
         obj["formula_prompt"] = p.formulaPrompt;
         obj["table_prompt"] = p.tablePrompt;
+
+        // 【新增】
+        obj["api_key"] = p.apiKey;
+        obj["model_name"] = p.modelName;
+
         arr.append(obj);
     }
     QJsonDocument doc(arr);
@@ -313,31 +323,126 @@ int SettingsManager::sourceEditorFontSize() const { return m_settings.value("dis
 void SettingsManager::setSourceEditorFontSize(int size) { if (sourceEditorFontSize() != size) { m_settings.setValue("display/source_editor_font_size", size); emit sourceEditorFontSizeChanged(size); } }
 
 
-// 【新增】实现
+
+// --- 新增实现 ---
+
 QString SettingsManager::textProcessorCommand() const {
-    return m_settings.value("processor/text_cmd", "").toString();
+    return m_settings.value("processor/text_cmd", Constants::DEFAULT_TEXT_PROCESSOR_CMD).toString();
 }
 void SettingsManager::setTextProcessorCommand(const QString& cmd) {
-    m_settings.setValue("processor/text_cmd", cmd);
+    if (textProcessorCommand() != cmd) {
+        m_settings.setValue("processor/text_cmd", cmd);
+        emit textProcessorCommandChanged(cmd);
+    }
 }
 
 QString SettingsManager::formulaProcessorCommand() const {
-    return m_settings.value("processor/formula_cmd", "").toString();
+    return m_settings.value("processor/formula_cmd", Constants::DEFAULT_FORMULA_PROCESSOR_CMD).toString();
 }
 void SettingsManager::setFormulaProcessorCommand(const QString& cmd) {
-    m_settings.setValue("processor/formula_cmd", cmd);
+    if (formulaProcessorCommand() != cmd) {
+        m_settings.setValue("processor/formula_cmd", cmd);
+        emit formulaProcessorCommandChanged(cmd);
+    }
 }
 
 QString SettingsManager::tableProcessorCommand() const {
-    return m_settings.value("processor/table_cmd", "").toString();
+    return m_settings.value("processor/table_cmd", Constants::DEFAULT_TABLE_PROCESSOR_CMD).toString();
 }
 void SettingsManager::setTableProcessorCommand(const QString& cmd) {
-    m_settings.setValue("processor/table_cmd", cmd);
+    if (tableProcessorCommand() != cmd) {
+        m_settings.setValue("processor/table_cmd", cmd);
+        emit tableProcessorCommandChanged(cmd);
+    }
 }
 
 QString SettingsManager::pureMathProcessorCommand() const {
-    return m_settings.value("processor/pure_math_cmd", "").toString();
+    return m_settings.value("processor/pure_math_cmd", Constants::DEFAULT_PURE_MATH_PROCESSOR_CMD).toString();
 }
 void SettingsManager::setPureMathProcessorCommand(const QString& cmd) {
-    m_settings.setValue("processor/pure_math_cmd", cmd);
+    if (pureMathProcessorCommand() != cmd) {
+        m_settings.setValue("processor/pure_math_cmd", cmd);
+        emit pureMathProcessorCommandChanged(cmd);
+    }
 }
+
+QString SettingsManager::textProcessorShortcut() const {
+    return m_settings.value("shortcuts/text_processor", Constants::SHORTCUT_TEXT_PROCESSOR).toString();
+}
+void SettingsManager::setTextProcessorShortcut(const QString& key) {
+    if (textProcessorShortcut() != key) {
+        m_settings.setValue("shortcuts/text_processor", key);
+        emit shortcutsChanged();
+    }
+}
+
+QString SettingsManager::formulaProcessorShortcut() const {
+    return m_settings.value("shortcuts/formula_processor", Constants::SHORTCUT_FORMULA_PROCESSOR).toString();
+}
+void SettingsManager::setFormulaProcessorShortcut(const QString& key) {
+    if (formulaProcessorShortcut() != key) {
+        m_settings.setValue("shortcuts/formula_processor", key);
+        emit shortcutsChanged();
+    }
+}
+
+QString SettingsManager::tableProcessorShortcut() const {
+    return m_settings.value("shortcuts/table_processor", Constants::SHORTCUT_TABLE_PROCESSOR).toString();
+}
+void SettingsManager::setTableProcessorShortcut(const QString& key) {
+    if (tableProcessorShortcut() != key) {
+        m_settings.setValue("shortcuts/table_processor", key);
+        emit shortcutsChanged();
+    }
+}
+
+QString SettingsManager::pureMathProcessorShortcut() const {
+    return m_settings.value("shortcuts/pure_math_processor", Constants::SHORTCUT_PURE_MATH_PROCESSOR).toString();
+}
+void SettingsManager::setPureMathProcessorShortcut(const QString& key) {
+    if (pureMathProcessorShortcut() != key) {
+        m_settings.setValue("shortcuts/pure_math_processor", key);
+        emit shortcutsChanged();
+    }
+}
+
+bool SettingsManager::textProcessorEnabled() const {
+    return m_settings.value("processor/text_enabled", Constants::DEFAULT_PROCESSOR_ENABLED).toBool();
+}
+void SettingsManager::setTextProcessorEnabled(bool enabled) {
+    if (textProcessorEnabled() != enabled) {
+        m_settings.setValue("processor/text_enabled", enabled);
+        emit textProcessorEnabledChanged(enabled);
+    }
+}
+
+bool SettingsManager::formulaProcessorEnabled() const {
+    return m_settings.value("processor/formula_enabled", Constants::DEFAULT_PROCESSOR_ENABLED).toBool();
+}
+void SettingsManager::setFormulaProcessorEnabled(bool enabled) {
+    if (formulaProcessorEnabled() != enabled) {
+        m_settings.setValue("processor/formula_enabled", enabled);
+        emit formulaProcessorEnabledChanged(enabled);
+    }
+}
+
+bool SettingsManager::tableProcessorEnabled() const {
+    return m_settings.value("processor/table_enabled", Constants::DEFAULT_PROCESSOR_ENABLED).toBool();
+}
+void SettingsManager::setTableProcessorEnabled(bool enabled) {
+    if (tableProcessorEnabled() != enabled) {
+        m_settings.setValue("processor/table_enabled", enabled);
+        emit tableProcessorEnabledChanged(enabled);
+    }
+}
+
+bool SettingsManager::pureMathProcessorEnabled() const {
+    return m_settings.value("processor/pure_math_enabled", Constants::DEFAULT_PROCESSOR_ENABLED).toBool();
+}
+void SettingsManager::setPureMathProcessorEnabled(bool enabled) {
+    if (pureMathProcessorEnabled() != enabled) {
+        m_settings.setValue("processor/pure_math_enabled", enabled);
+        emit pureMathProcessorEnabledChanged(enabled);
+    }
+}
+

@@ -11,9 +11,8 @@ struct RequestConfig {
     QString serverUrl;
     QString prompt;
     QString base64Image;
-    QString apiKey; // TODO: 预留
-    QString model;  // TODO: 预留
-    // ... 其他参数
+    QString apiKey;
+    QString model;
 };
 
 class NetworkManager : public QObject {
