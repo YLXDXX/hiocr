@@ -248,8 +248,16 @@ void MainWindow::setupConnections()
 void MainWindow::setImage(const QImage& image) { m_imageView->setImage(image); }
 void MainWindow::setRecognitionResult(const QString& markdown) { m_markdownSource->setPlainText(markdown); m_markdownRenderer->setMarkdown(markdown); }
 void MainWindow::showError(const QString& message) { QMessageBox::critical(this, "错误", message); }
-void MainWindow::setBusy(bool busy) { m_promptBar->setButtonsBusy(busy); }
 void MainWindow::setPrompt(const QString& prompt) { m_promptBar->setPrompt(prompt); }
+
+
+void MainWindow::setBusy(bool busy)
+{
+    // 这会将 PromptBar 上的所有按钮置灰
+    if (m_promptBar) {
+        m_promptBar->setButtonsBusy(busy);
+    }
+}
 
 void MainWindow::setCurrentPrompts(const QString& text, const QString& formula, const QString& table)
 {
@@ -434,20 +442,27 @@ void MainWindow::updateCopyImageActionState()
 
 void MainWindow::setStreamingMode(bool streaming)
 {
-    m_isStreaming = streaming;
+    if (!m_markdownRenderer) return;
 
-    // 关键优化：流式传输时，断开 Markdown 渲染器的自动更新连接
-    // 因为 WebEngineView 渲染非常慢，每次追加文本都渲染会卡死 UI
     if (streaming) {
+        // 进入流式模式：
+        // 1. 清空源码编辑器
+        m_markdownSource->clear();
+
+        // 2. 通知渲染器开始流式模式（启动定时器）
+        m_markdownRenderer->startStreaming();
+
+        // 3. 断开源码编辑器的自动渲染连接（防止干扰）
         disconnect(m_markdownSource, &QPlainTextEdit::textChanged,
                    this, &MainWindow::onMarkdownSourceChanged);
     } else {
-        // 流式传输结束，恢复连接并立即渲染一次最终结果
+        // 结束流式模式：
+        // 1. 通知渲染器停止（它会立即渲染最终结果）
+        m_markdownRenderer->stopStreaming();
+
+        // 2. 恢复源码编辑器的自动渲染连接
         connect(m_markdownSource, &QPlainTextEdit::textChanged,
                 this, &MainWindow::onMarkdownSourceChanged);
-
-        // 渲染最终完整文本
-        m_markdownRenderer->setMarkdown(m_markdownSource->toPlainText());
     }
 }
 
@@ -455,16 +470,14 @@ void MainWindow::appendRecognitionResult(const QString& delta)
 {
     if (!m_markdownSource) return;
 
-    // 移动光标到文本末尾
+    // 1. 更新源码编辑器（保持即时显示，开销很小）
     QTextCursor cursor = m_markdownSource->textCursor();
     cursor.movePosition(QTextCursor::End);
-
-    // 插入增量文本
     cursor.insertText(delta);
-
-    // 保持滚动
     m_markdownSource->ensureCursorVisible();
 
-    // 【重要】此时不要调用渲染器，因为 setStreamingMode(true) 已经断开了连接
-    // 这样纯文本编辑器的更新非常快，不会卡顿
+    // 2. 【关键】将增量数据推送给渲染器的缓冲区
+    if (m_markdownRenderer) {
+        m_markdownRenderer->appendStreamContent(delta);
+    }
 }

@@ -141,7 +141,6 @@ void AppController::setupConnections()
     connect(m_trayManager, &TrayManager::quitRequested, this, &AppController::quitApp);
 
     // --- 3. MainWindow UI -> Controller ---
-    // 处理主窗口的识别请求 (通用识别按钮或手动触发)
     connect(m_mainWindow, &MainWindow::recognizeRequested, this, [this](const QString& prompt, const QString& base64Img){
         ContentType inferredType = ContentType::Text;
         QString currentId = m_settings->currentServiceId();
@@ -155,7 +154,6 @@ void AppController::setupConnections()
         m_lastRecognizeType = inferredType;
         m_recognitionManager->recognize(prompt, base64Img);
     });
-
     connect(m_mainWindow, &MainWindow::typedRecognizeRequested, this, [this](const QString& prompt, const QString& base64, ContentType type){
         m_lastRecognizeType = type;
         m_recognitionManager->recognize(prompt, base64);
@@ -187,30 +185,28 @@ void AppController::setupConnections()
 
     // --- 5. RecognitionManager -> Controller ---
 
-    // 【修改】连接流式数据信号
+    // 连接流式数据信号 -> 追加 UI
     connect(m_recognitionManager, &RecognitionManager::streamDataReceived, m_mainWindow, &MainWindow::appendRecognitionResult);
 
-    // 【修改】处理状态变化：识别开始时清空 UI 并开启流式模式
+    // 处理状态变化：识别开始时清空 UI
     connect(m_recognitionManager, &RecognitionManager::busyStateChanged, this, [this](bool busy){
         if (busy) {
-            // 1. 清空旧结果
+            // 识别开始，清空旧结果，准备接收新数据
             emit recognitionResultReady(QString());
-            // 2. 【关键】开启流式模式，暂停渲染器自动刷新
+            // 开启流式模式
             m_mainWindow->setStreamingMode(true);
         } else {
-            // 识别结束（无论成功失败），关闭流式模式
+            // 识别结束，关闭流式模式
             m_mainWindow->setStreamingMode(false);
         }
+        // 【关键修正】转发信号，告诉 MainWindow 更新按钮状态
         emit busyStateChanged(busy);
     });
 
-    // 【修改】处理识别完成
+    // 处理识别完成
     connect(m_recognitionManager, &RecognitionManager::recognitionFinished, this, [this](const QString& markdown){
         m_isRetryingAfterSwitch = false;
         m_serviceManager->resetIdleTimer();
-
-        // 确保关闭流式模式（如果在 busyStateChanged(false) 之前触发）
-        m_mainWindow->setStreamingMode(false);
 
         // 非流式模式：直接设置全量文本
         if (!markdown.isEmpty()) {
@@ -226,16 +222,17 @@ void AppController::setupConnections()
         }
     });
 
-    // 识别失败处理逻辑 (保留原有的自动重试机制)
+    // 识别失败处理逻辑
     connect(m_recognitionManager, &RecognitionManager::recognitionFailed, this, [this](const QString& error){
-        m_mainWindow->setStreamingMode(false); // 确保出错时也关闭流式模式
+        // 确保出错时也关闭流式模式
+        m_mainWindow->setStreamingMode(false);
+
         if (m_isRetryingAfterSwitch) {
             m_isRetryingAfterSwitch = false;
             emit recognitionFailed(error);
             return;
         }
 
-        // 判断是否为网络连接错误
         bool isNetworkError = error.contains("Connection refused") ||
         error.contains("连接被拒绝") ||
         error.contains("Network error") ||
@@ -267,7 +264,6 @@ void AppController::setupConnections()
                 emit recognitionFailed("服务连接失败，正在尝试启动服务...");
             }
         } else {
-            // 当前为全局默认模式
             if (m_settings->autoStartService()) {
                 QString defaultLocalId = m_settings->defaultLocalServiceId();
                 if (!defaultLocalId.isEmpty()) {
@@ -277,7 +273,6 @@ void AppController::setupConnections()
                         tryStartId = defaultLocalId;
                         tryStartCommand = p.startCommand;
 
-                        // 切换当前服务 ID 并更新 UI
                         m_settings->setCurrentServiceId(defaultLocalId);
                         m_mainWindow->updateServiceSelector(m_settings->serviceProfiles(), defaultLocalId);
 
@@ -308,6 +303,10 @@ void AppController::setupConnections()
     connect(this, &AppController::imageChanged, m_mainWindow, &MainWindow::setImage);
     connect(this, &AppController::recognitionResultReady, m_mainWindow, &MainWindow::setRecognitionResult);
     connect(this, &AppController::recognitionFailed, m_mainWindow, &MainWindow::showError);
+
+    // 【关键修正】添加这一行：连接 Busy 信号到 MainWindow 的 setBusy 槽
+    connect(this, &AppController::busyStateChanged, m_mainWindow, &MainWindow::setBusy);
+
     connect(this, &AppController::requestAreaSelection, m_mainWindow, &MainWindow::startAreaSelection);
 
     // --- 7. 设置变更 ---

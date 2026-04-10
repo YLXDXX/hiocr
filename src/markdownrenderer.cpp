@@ -10,9 +10,14 @@
 
 
 MarkdownRenderer::MarkdownRenderer(QWidget* parent)
-: QWidget(parent), m_loaded(false)
+: QWidget(parent), m_loaded(false), m_isStreaming(false)
 {
     setupUi();
+
+    // 【新增】初始化定时器
+    m_renderTimer = new QTimer(this);
+    m_renderTimer->setInterval(300); // 设置刷新间隔为 300ms (可调整)
+    connect(m_renderTimer, &QTimer::timeout, this, &MarkdownRenderer::onRenderTimerTimeout);
 }
 
 void MarkdownRenderer::setupUi()
@@ -65,12 +70,84 @@ void MarkdownRenderer::setupUi()
 
 void MarkdownRenderer::setMarkdown(const QString& markdown)
 {
+    // 如果正在流式传输，外部强制调用 setMarkdown，则视为中断流式，停止定时器
+    if (m_isStreaming) {
+        stopStreaming();
+    }
+
     if (m_loaded)
         renderMarkdown(markdown);
     else
         m_pendingMarkdown = markdown;
 }
 
+
+// 【新增】开始流式模式
+void MarkdownRenderer::startStreaming()
+{
+    m_streamBuffer.clear();
+    m_isStreaming = true;
+    m_renderTimer->start(); // 启动定时器
+}
+
+// 【新增】追加内容
+void MarkdownRenderer::appendStreamContent(const QString& delta)
+{
+    if (!m_isStreaming) {
+        // 如果未显式调用 startStreaming，这里自动开启（容错）
+        startStreaming();
+    }
+
+    m_streamBuffer.append(delta);
+
+    // 注意：这里不立即渲染，等待定时器触发
+    // 但我们可以选择立即更新纯文本到界面的某处（如果需要），
+    // 不过 MainWindow 的源码编辑器已经做了这件事，这里只管 Web 渲染。
+}
+
+// 【新增】停止流式模式
+void MarkdownRenderer::stopStreaming()
+{
+    if (!m_isStreaming) return;
+
+    m_isStreaming = false;
+    m_renderTimer->stop();
+
+    // 强制立即渲染最后一次缓冲区内容，确保结果完整
+    renderMarkdown(m_streamBuffer);
+    m_streamBuffer.clear();
+}
+
+// 【新增】定时器回调
+void MarkdownRenderer::onRenderTimerTimeout()
+{
+    if (m_streamBuffer.isEmpty()) return;
+
+    // 渲染当前缓冲区的内容
+    // 注意：这里每次都全量渲染 m_streamBuffer，以保证 Markdown 语法的正确性（如闭合标签）
+    renderMarkdown(m_streamBuffer);
+}
+
+void MarkdownRenderer::renderMarkdown(const QString& markdown)
+{
+    if (m_bridge) {
+        m_bridge->setMarkdown(markdown);
+    }
+}
+
+void MarkdownRenderer::onPageLoaded(bool ok)
+{
+    m_loaded = ok;
+    emit pageLoaded(ok);
+
+    if (ok) {
+        applyFontSize(SettingsManager::instance()->rendererFontSize());
+        if (!m_pendingMarkdown.isEmpty()) {
+            renderMarkdown(m_pendingMarkdown);
+            m_pendingMarkdown.clear();
+        }
+    }
+}
 
 void MarkdownRenderer::applyFontSize(int size)
 {
@@ -81,25 +158,5 @@ void MarkdownRenderer::applyFontSize(int size)
     }
 }
 
-void MarkdownRenderer::onPageLoaded(bool ok)
-{
-    m_loaded = ok;
-    emit pageLoaded(ok);
-
-    if (ok) {
-        // 页面加载完成后立即应用当前的字体设置
-        applyFontSize(SettingsManager::instance()->rendererFontSize());
-
-        if (!m_pendingMarkdown.isEmpty()) {
-            renderMarkdown(m_pendingMarkdown);
-            m_pendingMarkdown.clear();
-        }
-    }
-}
-
-void MarkdownRenderer::renderMarkdown(const QString& markdown)
-{
-    m_bridge->setMarkdown(markdown);
-}
 
 

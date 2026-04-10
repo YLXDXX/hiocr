@@ -41,12 +41,12 @@ namespace Constants {
     const int DEFAULT_SERVICE_IDLE_TIMEOUT = 10; // 默认10分钟
 
     // 默认请求参数 (JSON 格式)
-    // 注意：stream 固定为 false，因为当前代码不支持流式解析，这里不配置 stream
     const QString DEFAULT_REQUEST_PARAMETERS = R"({
     "temperature": 0.5,
     "max_tokens": 8192,
     "cache_prompt": false,
-    "enable_thinking": false
+    "enable_thinking": false,
+    "stream":true
     })";
 
 
