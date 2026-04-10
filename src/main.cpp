@@ -120,7 +120,7 @@ int main(int argc, char *argv[])
 
     // 1. 设置命令行解析器
     QCommandLineParser parser;
-    parser.setApplicationDescription("hiocr - 文字识别");
+    parser.setApplicationDescription("HiOCR - 一款好用的识别工具");
     parser.addHelpOption();
     parser.addVersionOption();
 

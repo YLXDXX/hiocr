@@ -50,7 +50,7 @@ MainWindow::~MainWindow() {}
 
 void MainWindow::setupUi()
 {
-    setWindowTitle("hiocr - 文字识别");
+    setWindowTitle("HiOCR");
     resize(1200, 800);
 
     QSplitter* mainSplitter = new QSplitter(Qt::Horizontal, this);
@@ -133,7 +133,6 @@ void MainWindow::setupMenuBar()
                 }
             }
         });
-        fileMenu->addAction("截图", this, [this](){ emit screenshotRequested(); });
 
         // 【新增】历史记录菜单项
         QAction* historyAction = fileMenu->addAction("查看历史记录", this, &MainWindow::showHistoryDialog);
@@ -146,6 +145,8 @@ void MainWindow::setupMenuBar()
 
         // --- 工具菜单 ---
         QMenu* toolsMenu = new QMenu(this);
+        toolsMenu->addAction("截图", this, [this](){ emit screenshotRequested(); });
+        toolsMenu->addSeparator();
         m_copyImageAction = toolsMenu->addAction("复制当前图片", this, &MainWindow::onCopyCurrentImage);
         m_copyImageAction->setEnabled(false);
         m_mainToolBar->addWidget(createMenuButton("工具", toolsMenu));
