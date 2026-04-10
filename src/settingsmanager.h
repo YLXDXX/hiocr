@@ -187,6 +187,11 @@ public:
     int requestTimeout() const;
     void setRequestTimeout(int seconds);
 
+    bool saveHistoryEnabled() const;
+    void setSaveHistoryEnabled(bool enabled);
+    int historyLimit() const;
+    void setHistoryLimit(int limit);
+
 signals:
     void serviceProfilesChanged();
     void currentServiceIdChanged(const QString& id);
@@ -234,6 +239,8 @@ signals:
     void pureMathProcessorEnabledChanged(bool enabled);
 
     void requestTimeoutChanged(int seconds);
+    void saveHistoryEnabledChanged(bool enabled);
+    void historyLimitChanged(int limit);
 
 private:
     explicit SettingsManager(QObject* parent = nullptr);

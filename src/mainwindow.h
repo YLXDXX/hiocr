@@ -43,6 +43,7 @@ public:
     QString currentMarkdownSource() const;
 
     bool hasImage() const;
+    QImage currentImage() const;
 
 public slots:
     void updateServiceSelector(const QList<ServiceProfile>& profiles, const QString& currentId);
@@ -58,6 +59,7 @@ public slots:
 
     void appendRecognitionResult(const QString& delta);
     void setStreamingMode(bool streaming);
+    void showHistoryDialog();
 
 signals:
     void recognizeRequested(const QString& prompt, const QString& base64Image);
@@ -72,8 +74,8 @@ signals:
     void serviceSelected(const QString& id);
     void serviceToggleRequested(const QString& id);
 
-    // 【新增】手动处理请求信号
     void manualProcessRequested(ContentType type);
+    void loadHistoryRecordRequested(int recordId);
 
 protected:
     void keyPressEvent(QKeyEvent *event) override;
@@ -105,7 +107,8 @@ private:
     QComboBox* m_serviceSelector = nullptr;
     QPushButton* m_serviceToggleBtn = nullptr;
     QAction* m_stopAllServicesAction = nullptr;
-    QAction* m_copyImageAction = nullptr; // 移动到这里，方便管理
+    QAction* m_copyImageAction = nullptr;
+    QAction* m_viewHistoryAction = nullptr;
 
     // 脚本处理控件保持不变
     QCheckBox* m_scriptGlobalCheck = nullptr;

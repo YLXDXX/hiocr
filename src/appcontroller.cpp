@@ -7,8 +7,8 @@
 #include "shortcuthandler.h"
 #include "imageprocessor.h"
 #include "settingsdialog.h"
-#include "singleapplication.h" // 【新增】
-
+#include "singleapplication.h"
+#include "historymanager.h"
 #include <QApplication>
 #include <QTimer>
 #include <QDebug>
@@ -16,7 +16,7 @@
 #include <QLocalSocket>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QStatusBar> // 【新增】
+#include <QStatusBar>
 
 static const QString SINGLE_INSTANCE_KEY = "hiocr_single_instance_socket";
 
@@ -106,6 +106,7 @@ void AppController::setupManagers()
     m_shortcutHandler = new ShortcutHandler(this);
     m_serviceManager = new ServiceManager(this);
     m_copyProcessor = new CopyProcessor(this);
+    HistoryManager::instance()->init();
 }
 
 
@@ -203,19 +204,59 @@ void AppController::setupConnections()
         emit busyStateChanged(busy);
     });
 
+
+    // 【新增】处理历史记录加载请求
+    connect(m_mainWindow, &MainWindow::loadHistoryRecordRequested, this, [this](int recordId){
+        HistoryRecord record = HistoryManager::instance()->getRecordById(recordId);
+        if (record.id != -1) {
+            // 1. 加载图片
+            QImage img(record.cachedImagePath);
+            if (!img.isNull()) {
+                m_mainWindow->setImage(img);
+                // 注意：这里要更新 RecognitionManager 的 Base64 缓存，否则立即点击重新识别会出错
+                m_recognitionManager->setCurrentBase64(ImageProcessor::imageToBase64(img));
+            }
+
+            // 2. 加载结果文本
+            m_mainWindow->setRecognitionResult(record.resultText);
+            m_mainWindow->setRecognizeType(record.recognitionType);
+
+            // 3. 更新提示词下拉框和编辑框
+            QString prompt;
+            // ... (复用您原有的获取 prompt 逻辑) ...
+            // 简单示例：
+            switch(record.recognitionType) {
+                case ContentType::Formula: prompt = m_settings->formulaPrompt(); break;
+                case ContentType::Table: prompt = m_settings->tablePrompt(); break;
+                default: prompt = m_settings->textPrompt();
+            }
+            m_mainWindow->setPrompt(prompt);
+
+            showWindow(); // 激活窗口
+        }
+    });
+
     // 处理识别完成
     connect(m_recognitionManager, &RecognitionManager::recognitionFinished, this, [this](const QString& markdown){
         m_isRetryingAfterSwitch = false;
         m_serviceManager->resetIdleTimer();
 
-        // 非流式模式：直接设置全量文本
         if (!markdown.isEmpty()) {
             emit recognitionResultReady(markdown);
         }
 
-        // 获取最终文本
         QString finalText = m_mainWindow->currentMarkdownSource();
         m_mainWindow->setRecognizeType(m_lastRecognizeType);
+
+        // 【新增】保存历史记录
+        if (m_settings->saveHistoryEnabled()) {
+            // 直接从 MainWindow 获取当前显示的图片
+            QImage currentImage = m_mainWindow->currentImage();
+
+            if (!currentImage.isNull() && !finalText.isEmpty()) {
+                HistoryManager::instance()->saveRecord(currentImage, finalText, m_lastRecognizeType);
+            }
+        }
 
         if (m_settings->autoCopyResult() && !finalText.isEmpty()) {
             m_copyProcessor->processAndCopy(finalText, m_lastRecognizeType);

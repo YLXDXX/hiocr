@@ -191,6 +191,27 @@ void SettingsDialog::setupUi()
     m_autoExternalProcessCheck = new QCheckBox("复制前自动调用外部程序处理");
     behaviorLayout->addWidget(m_autoExternalProcessCheck);
 
+    // 【新增】历史记录设置区域
+    QHBoxLayout* historyLayout = new QHBoxLayout();
+    m_saveHistoryCheck = new QCheckBox("保存识别历史记录");
+    connect(m_saveHistoryCheck, &QCheckBox::toggled, this, [this](bool checked){
+        m_historyLimitSpin->setEnabled(checked);
+    });
+
+    QLabel* limitLabel = new QLabel("最多保留条数:");
+    m_historyLimitSpin = new QSpinBox();
+    m_historyLimitSpin->setRange(0, 9999);
+    m_historyLimitSpin->setSuffix(" 条");
+    m_historyLimitSpin->setSpecialValueText("无限制"); // 0 表示无限制
+
+    historyLayout->addWidget(m_saveHistoryCheck);
+    historyLayout->addStretch();
+    historyLayout->addWidget(limitLabel);
+    historyLayout->addWidget(m_historyLimitSpin);
+    behaviorLayout->addLayout(historyLayout);
+
+    mainLayout->addWidget(behaviorGroup);
+
     // 【新增】自动启动服务开关
     m_autoStartServiceCheck = new QCheckBox("远程连接失败自动启动本地服务");
     m_autoStartServiceCheck->setToolTip("当使用全局默认设置连接失败时，尝试自动启动并切换到指定的默认本地服务。");
@@ -409,6 +430,11 @@ void SettingsDialog::loadSettings()
     m_sourceEditorFontSpin->setValue(s->sourceEditorFontSize());
 
     m_autoStartServiceCheck->setChecked(s->autoStartService());
+
+    // 【新增】加载历史设置
+    m_saveHistoryCheck->setChecked(s->saveHistoryEnabled());
+    m_historyLimitSpin->setValue(s->historyLimit());
+    m_historyLimitSpin->setEnabled(s->saveHistoryEnabled());
 }
 
 void SettingsDialog::populateServiceList()
@@ -539,6 +565,10 @@ void SettingsDialog::onSaveClicked()
 
     s->setAutoStartService(m_autoStartServiceCheck->isChecked());
 
+    // 【新增】保存历史设置
+    s->setSaveHistoryEnabled(m_saveHistoryCheck->isChecked());
+    s->setHistoryLimit(m_historyLimitSpin->value());
+
     accept();
 }
 
@@ -563,6 +593,10 @@ void SettingsDialog::onRestoreDefaults()
 
     m_rendererFontSpin->setValue(Constants::DEFAULT_RENDERER_FONT_SIZE);
     m_sourceEditorFontSpin->setValue(Constants::DEFAULT_SOURCE_EDITOR_FONT_SIZE);
+
+    // 【新增】恢复历史设置
+    m_saveHistoryCheck->setChecked(Constants::DEFAULT_SAVE_HISTORY);
+    m_historyLimitSpin->setValue(Constants::DEFAULT_HISTORY_LIMIT);
 
     // 【新增】恢复新变量默认值
     m_textProcessorEdit->clear();

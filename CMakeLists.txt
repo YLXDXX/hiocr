@@ -6,7 +6,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets Network WebEngineWidgets WebChannel DBus)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Network WebEngineWidgets WebChannel DBus Sql)
 
 # 可选：查找 KF6GlobalAccel（KDE 原生全局快捷键）
 find_package(KF6GlobalAccel QUIET)

@@ -101,6 +101,9 @@ private:
     // 临时数据
     QList<ServiceProfile> m_tempServiceProfiles;
     int m_currentEditingServiceIndex = -1;
+
+    QCheckBox* m_saveHistoryCheck;
+    QSpinBox* m_historyLimitSpin;
 };
 
 #endif // SETTINGSDIALOG_H

@@ -30,7 +30,8 @@ void SettingsManager::initializeDefaults()
         m_settings.setValue("server/url", Constants::DEFAULT_SERVER_URL);
         m_settings.setValue("server/api_key", Constants::DEFAULT_GLOBAL_API_KEY);
         m_settings.setValue("server/model_name", Constants::DEFAULT_GLOBAL_MODEL_NAME);
-
+        m_settings.setValue("history/save_enabled", Constants::DEFAULT_SAVE_HISTORY);
+        m_settings.setValue("history/limit", Constants::DEFAULT_HISTORY_LIMIT);
 
         m_settings.setValue("shortcuts/screenshot", Constants::SHORTCUT_SCREENSHOT);
         m_settings.setValue("shortcuts/text_recognize", Constants::SHORTCUT_TEXT);
@@ -110,6 +111,13 @@ void SettingsManager::initializeDefaults()
         if (!m_settings.contains("server/model_name")) {
             m_settings.setValue("server/model_name", Constants::DEFAULT_GLOBAL_MODEL_NAME);
             needsSync = true;
+        }
+
+        if (!m_settings.contains("history/save_enabled")) {
+            m_settings.setValue("history/save_enabled", Constants::DEFAULT_SAVE_HISTORY);
+        }
+        if (!m_settings.contains("history/limit")) {
+            m_settings.setValue("history/limit", Constants::DEFAULT_HISTORY_LIMIT);
         }
 
         if (!m_settings.contains("services/default_local_id")) {
@@ -484,5 +492,27 @@ void SettingsManager::setRequestTimeout(int seconds) {
     if (requestTimeout() != seconds) {
         m_settings.setValue("network/request_timeout", seconds);
         emit requestTimeoutChanged(seconds);
+    }
+}
+
+bool SettingsManager::saveHistoryEnabled() const {
+    return m_settings.value("history/save_enabled", Constants::DEFAULT_SAVE_HISTORY).toBool();
+}
+
+void SettingsManager::setSaveHistoryEnabled(bool enabled) {
+    if (saveHistoryEnabled() != enabled) {
+        m_settings.setValue("history/save_enabled", enabled);
+        emit saveHistoryEnabledChanged(enabled);
+    }
+}
+
+int SettingsManager::historyLimit() const {
+    return m_settings.value("history/limit", Constants::DEFAULT_HISTORY_LIMIT).toInt();
+}
+
+void SettingsManager::setHistoryLimit(int limit) {
+    if (historyLimit() != limit) {
+        m_settings.setValue("history/limit", limit);
+        emit historyLimitChanged(limit);
     }
 }

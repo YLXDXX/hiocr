@@ -8,6 +8,7 @@
 #include "settingsmanager.h"
 #include "copyprocessor.h"
 #include "markdowncopybar.h"
+#include "historymanager.h"
 
 #include <QSplitter>
 #include <QVBoxLayout>
@@ -34,6 +35,9 @@
 #include <QToolBar>
 #include <QToolButton>
 
+#include <QDialog>
+#include <QListWidget>
+#include <QDialogButtonBox>
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
 {
@@ -91,16 +95,12 @@ void MainWindow::setupUi()
 
 void MainWindow::setupMenuBar()
 {
-    // 1. 创建顶部工具栏替代菜单栏
+    // 1. 创建顶部工具栏
     m_mainToolBar = new QToolBar("MainToolBar", this);
     addToolBar(Qt::TopToolBarArea, m_mainToolBar);
-
-    // 设置工具栏样式：不显示图标，只显示文字，且按钮不突出（像菜单一样）
     m_mainToolBar->setToolButtonStyle(Qt::ToolButtonTextOnly);
-    m_mainToolBar->setMovable(false); // 禁止拖动
+    m_mainToolBar->setMovable(false);
     m_mainToolBar->setFloatable(false);
-
-    // 统一设置扁平样式，让 QToolButton 看起来像菜单标题
     m_mainToolBar->setStyleSheet(R"(
         QToolBar { spacing: 2px; padding: 0px; background: palette(window); border-bottom: 1px solid palette(mid); }
         QToolButton { border: none; padding: 4px 6px; border-radius: 3px; background: transparent; }
@@ -108,16 +108,15 @@ void MainWindow::setupMenuBar()
         QToolButton:hover { background: palette(highlight); color: palette(highlightedText); }
     )");
 
-    // 辅助函数：创建菜单按钮
     auto createMenuButton = [this](const QString& text, QMenu* menu) -> QToolButton* {
         QToolButton* btn = new QToolButton(this);
         btn->setText(text);
         btn->setMenu(menu);
-        btn->setPopupMode(QToolButton::InstantPopup); // 点击立即弹出菜单
+        btn->setPopupMode(QToolButton::InstantPopup);
         return btn;
     };
 
-    // --- 2. 文件菜单 ---
+    // --- 文件菜单 ---
     QMenu* fileMenu = new QMenu(this);
     fileMenu->addAction("打开图片", this, [this]() {
         QString file = QFileDialog::getOpenFileName(this, "选择图片", "", "Images (*.png *.jpg *.bmp)");
@@ -135,23 +134,24 @@ void MainWindow::setupMenuBar()
             }
         });
         fileMenu->addAction("截图", this, [this](){ emit screenshotRequested(); });
+
+        // 【新增】历史记录菜单项
+        QAction* historyAction = fileMenu->addAction("查看历史记录", this, &MainWindow::showHistoryDialog);
+        historyAction->setShortcut(QKeySequence("Ctrl+H"));
+
         fileMenu->addSeparator();
         fileMenu->addAction("退出", qApp, &QApplication::quit);
 
         m_mainToolBar->addWidget(createMenuButton("文件", fileMenu));
 
-        // --- 3. 工具菜单 ---
+        // --- 工具菜单 ---
         QMenu* toolsMenu = new QMenu(this);
-        // 【新增】复制当前图片选项
         m_copyImageAction = toolsMenu->addAction("复制当前图片", this, &MainWindow::onCopyCurrentImage);
-        m_copyImageAction->setEnabled(false); // 初始禁用
-
+        m_copyImageAction->setEnabled(false);
         m_mainToolBar->addWidget(createMenuButton("工具", toolsMenu));
 
-        // --- 4. 识别服务菜单 ---
+        // --- 识别服务菜单 ---
         QMenu* serviceMenu = new QMenu(this);
-
-        // 服务选择控件（嵌入菜单中）
         QWidget* serviceWidget = new QWidget();
         QHBoxLayout* layout = new QHBoxLayout(serviceWidget);
         layout->setContentsMargins(5, 0, 5, 0);
@@ -164,7 +164,7 @@ void MainWindow::setupMenuBar()
         });
         layout->addWidget(m_serviceSelector);
         m_serviceToggleBtn = new QPushButton("未启动");
-        m_serviceToggleBtn->setStyleSheet("QPushButton { border: 1px solid palette(mid); padding: 0 4px; }"); // 按钮样式微调
+        m_serviceToggleBtn->setStyleSheet("QPushButton { border: 1px solid palette(mid); padding: 0 4px; }");
         connect(m_serviceToggleBtn, &QPushButton::clicked, this, [this](){
             QString id = m_serviceSelector->currentData().toString();
             emit serviceToggleRequested(id);
@@ -181,47 +181,31 @@ void MainWindow::setupMenuBar()
 
         m_mainToolBar->addWidget(createMenuButton("识别服务", serviceMenu));
 
-        // --- 5. 设置菜单 ---
+        // --- 设置菜单 ---
         QMenu* settingsMenu = new QMenu(this);
         settingsMenu->addAction("首选项", this, [this](){ emit settingsTriggered(); });
-
         m_mainToolBar->addWidget(createMenuButton("设置", settingsMenu));
 
-        // --- 6. 脚本控制工具栏 (紧接着设置) ---
-        // 添加一个分隔符，视觉上区分菜单和工具
+        // --- 脚本控制 ---
         m_mainToolBar->addSeparator();
-
         QWidget* scriptWidget = new QWidget();
         QHBoxLayout* scriptLayout = new QHBoxLayout(scriptWidget);
         scriptLayout->setContentsMargins(0, 0, 0, 0);
         scriptLayout->setSpacing(5);
-
         m_scriptGlobalCheck = new QCheckBox("脚本");
-        m_scriptGlobalCheck->setToolTip("全局启用/禁用复制前自动调用脚本");
         scriptLayout->addWidget(m_scriptGlobalCheck);
-
         scriptLayout->addWidget(new QLabel("|"));
-
         m_scriptTextCheck = new QCheckBox("文字");
-        m_scriptTextCheck->setToolTip("启用文字脚本");
         scriptLayout->addWidget(m_scriptTextCheck);
-
         m_scriptFormulaCheck = new QCheckBox("公式");
-        m_scriptFormulaCheck->setToolTip("启用公式脚本");
         scriptLayout->addWidget(m_scriptFormulaCheck);
-
         m_scriptTableCheck = new QCheckBox("表格");
-        m_scriptTableCheck->setToolTip("启用表格脚本");
         scriptLayout->addWidget(m_scriptTableCheck);
-
         m_scriptPureMathCheck = new QCheckBox("纯公式");
-        m_scriptPureMathCheck->setToolTip("启用纯数学公式脚本 (优先级最高)");
         scriptLayout->addWidget(m_scriptPureMathCheck);
-
-        // 将脚本控件添加到工具栏
         m_mainToolBar->addWidget(scriptWidget);
 
-        // --- 7. 连接信号 ---
+        // 连接信号
         SettingsManager* s = SettingsManager::instance();
         connect(m_scriptGlobalCheck, &QCheckBox::toggled, s, &SettingsManager::setAutoExternalProcessBeforeCopy);
         connect(m_scriptTextCheck, &QCheckBox::toggled, s, &SettingsManager::setTextProcessorEnabled);
@@ -480,4 +464,128 @@ void MainWindow::appendRecognitionResult(const QString& delta)
     if (m_markdownRenderer) {
         m_markdownRenderer->appendStreamContent(delta);
     }
+}
+
+
+// 【新增】实现查看历史记录对话框
+void MainWindow::showHistoryDialog()
+{
+    QDialog* dialog = new QDialog(this);
+    dialog->setWindowTitle("识别历史记录");
+    dialog->resize(900, 600); // 【修改】稍微调大默认窗口尺寸
+
+    QVBoxLayout* mainLayout = new QVBoxLayout(dialog);
+
+    QListWidget* listWidget = new QListWidget(dialog);
+    listWidget->setViewMode(QListView::ListMode);
+
+    // 【修改 1】增大图标尺寸，让图片更清晰
+    listWidget->setIconSize(QSize(250, 250));
+
+    listWidget->setResizeMode(QListView::Adjust);
+    listWidget->setAlternatingRowColors(true);
+
+    // 【新增】开启自动换行，以便显示多行文本预览
+    listWidget->setWordWrap(true);
+    listWidget->setStyleSheet("QListWidget::item { padding: 10px; border-bottom: 1px solid #ddd; }");
+
+    mainLayout->addWidget(listWidget);
+
+    // 加载记录
+    auto records = HistoryManager::instance()->getRecentRecords();
+    for (const auto& record : records) {
+        QListWidgetItem* item = new QListWidgetItem(listWidget);
+
+        // 设置图标
+        QPixmap pix(record.cachedImagePath);
+        if (!pix.isNull()) {
+            item->setIcon(QIcon(pix.scaled(250, 250, Qt::KeepAspectRatio, Qt::SmoothTransformation)));
+        } else {
+            item->setIcon(QIcon::fromTheme("image-missing"));
+        }
+
+        // 解析类型
+        QString typeStr = "文字";
+        if (record.recognitionType == ContentType::Formula) typeStr = "公式";
+        else if (record.recognitionType == ContentType::Table) typeStr = "表格";
+
+        // 【修改 2】格式化显示文本：时间+类型 + 结果预览
+        QString header = QString("[%1] %2").arg(record.timestamp.toString("MM-dd hh:mm")).arg(typeStr);
+
+        // 提取结果预览（去除换行，取前50个字符）
+        QString preview = record.resultText;
+        preview.replace("\n", " "); // 将换行替换为空格，避免预览排版乱
+        if (preview.length() > 80) {
+            preview = preview.left(80) + "...";
+        }
+
+        // 组合最终文本，使用换行符分隔标题和预览
+        item->setText(QString("%1\n%2").arg(header).arg(preview));
+
+        // 设置完整的工具提示
+        item->setToolTip(QString("时间: %1\n类型: %2\n\n%3")
+        .arg(record.timestamp.toString("yyyy-MM-dd hh:mm:ss"))
+        .arg(typeStr)
+        .arg(record.resultText));
+
+        item->setData(Qt::UserRole, record.id); // 存储 ID
+    }
+
+    // 按钮区域
+    QDialogButtonBox* buttons = new QDialogButtonBox(QDialogButtonBox::Open | QDialogButtonBox::Close, dialog);
+    QPushButton* loadBtn = buttons->button(QDialogButtonBox::Open);
+    loadBtn->setText("加载到编辑器");
+
+    QPushButton* deleteBtn = buttons->addButton("删除选中", QDialogButtonBox::ActionRole);
+    QPushButton* clearBtn = buttons->addButton("清空历史", QDialogButtonBox::ActionRole);
+
+    // 加载按钮点击
+    connect(loadBtn, &QPushButton::clicked, this, [this, listWidget, dialog](){
+        auto currentItem = listWidget->currentItem();
+        if (currentItem) {
+            int recordId = currentItem->data(Qt::UserRole).toInt();
+            emit loadHistoryRecordRequested(recordId);
+            dialog->close();
+        }
+    });
+
+    // 删除按钮点击
+    connect(deleteBtn, &QPushButton::clicked, this, [listWidget](){
+        auto currentItem = listWidget->currentItem();
+        if (currentItem) {
+            int recordId = currentItem->data(Qt::UserRole).toInt();
+            HistoryManager::instance()->deleteRecord(recordId);
+            delete listWidget->takeItem(listWidget->row(currentItem));
+        }
+    });
+
+    // 清空按钮点击
+    connect(clearBtn, &QPushButton::clicked, this, [listWidget, dialog](){
+        if (QMessageBox::question(dialog, "确认", "确定要清空所有历史记录吗？") == QMessageBox::Yes) {
+            HistoryManager::instance()->clearAll();
+            listWidget->clear();
+        }
+    });
+
+    // 双击加载
+    connect(listWidget, &QListWidget::itemDoubleClicked, this, [this, listWidget, dialog](QListWidgetItem* item){
+        int recordId = item->data(Qt::UserRole).toInt();
+        emit loadHistoryRecordRequested(recordId);
+        dialog->close();
+    });
+
+    connect(buttons, &QDialogButtonBox::rejected, dialog, &QDialog::close);
+    mainLayout->addWidget(buttons);
+
+    dialog->exec();
+    dialog->deleteLater();
+}
+
+// 【新增】返回当前显示的图片 (用于 AppController 保存历史)
+QImage MainWindow::currentImage() const
+{
+    if (m_imageView) {
+        return m_imageView->currentImage();
+    }
+    return QImage();
 }

@@ -40,6 +40,7 @@ set(APP_SOURCES
     servicemanager.cpp
     shortcutedit.cpp
     singleapplication.cpp
+    historymanager.cpp
 )
 
 set(APP_HEADERS
@@ -60,6 +61,7 @@ set(APP_HEADERS
     servicemanager.h
     shortcutedit.h
     singleapplication.h
+    historymanager.h
 )
 
 # 如果 KF6GlobalAccel 可用，则添加 KGlobalAccel 支持
@@ -79,6 +81,7 @@ target_link_libraries(hiocr
     Qt6::WebEngineWidgets
     Qt6::WebChannel
     Qt6::DBus
+    Qt6::Sql
     hiocr_lib
 )
 

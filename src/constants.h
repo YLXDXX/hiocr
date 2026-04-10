@@ -92,6 +92,10 @@ namespace Constants {
 
     // 默认请求超时时间 (秒)
     const int DEFAULT_REQUEST_TIMEOUT = 30;
+
+    // 历史记录设置
+    const bool DEFAULT_SAVE_HISTORY = true;
+    const int DEFAULT_HISTORY_LIMIT = 100;
 }
 
 #endif // CONSTANTS_H
