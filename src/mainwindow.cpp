@@ -430,3 +430,41 @@ void MainWindow::updateCopyImageActionState()
         m_copyImageAction->setEnabled(hasImage);
     }
 }
+
+
+void MainWindow::setStreamingMode(bool streaming)
+{
+    m_isStreaming = streaming;
+
+    // 关键优化：流式传输时，断开 Markdown 渲染器的自动更新连接
+    // 因为 WebEngineView 渲染非常慢，每次追加文本都渲染会卡死 UI
+    if (streaming) {
+        disconnect(m_markdownSource, &QPlainTextEdit::textChanged,
+                   this, &MainWindow::onMarkdownSourceChanged);
+    } else {
+        // 流式传输结束，恢复连接并立即渲染一次最终结果
+        connect(m_markdownSource, &QPlainTextEdit::textChanged,
+                this, &MainWindow::onMarkdownSourceChanged);
+
+        // 渲染最终完整文本
+        m_markdownRenderer->setMarkdown(m_markdownSource->toPlainText());
+    }
+}
+
+void MainWindow::appendRecognitionResult(const QString& delta)
+{
+    if (!m_markdownSource) return;
+
+    // 移动光标到文本末尾
+    QTextCursor cursor = m_markdownSource->textCursor();
+    cursor.movePosition(QTextCursor::End);
+
+    // 插入增量文本
+    cursor.insertText(delta);
+
+    // 保持滚动
+    m_markdownSource->ensureCursorVisible();
+
+    // 【重要】此时不要调用渲染器，因为 setStreamingMode(true) 已经断开了连接
+    // 这样纯文本编辑器的更新非常快，不会卡顿
+}

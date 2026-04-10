@@ -33,6 +33,7 @@ signals:
     void recognitionFinished(const QString& markdown);
     void recognitionFailed(const QString& error);
     void busyStateChanged(bool busy);
+    void streamDataReceived(const QString& delta);
 
 private slots:
     void onNetworkFinished(const QString& result, bool success, const QString& error);

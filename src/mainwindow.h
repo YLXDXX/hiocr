@@ -56,6 +56,9 @@ public slots:
     void onCopyCurrentImage();
     void updateCopyImageActionState();
 
+    void appendRecognitionResult(const QString& delta);
+    void setStreamingMode(bool streaming);
+
 signals:
     void recognizeRequested(const QString& prompt, const QString& base64Image);
     void typedRecognizeRequested(const QString& prompt, const QString& base64Image, ContentType type);
@@ -110,6 +113,8 @@ private:
     QCheckBox* m_scriptFormulaCheck = nullptr;
     QCheckBox* m_scriptTableCheck = nullptr;
     QCheckBox* m_scriptPureMathCheck = nullptr;
+
+    bool m_isStreaming = false; // 是否处于流式输入模式
 };
 
 #endif // MAINWINDOW_H

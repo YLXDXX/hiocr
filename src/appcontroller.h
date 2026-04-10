@@ -27,7 +27,6 @@ public:
     void handleCommandLineArguments(const QString& imagePath, const QString& resultText);
 
 public slots:
-    void onRecognitionFinished(const QString& markdown);
     void takeScreenshot();
     void takeTextRecognizeScreenshot();
     void takeFormulaRecognizeScreenshot();

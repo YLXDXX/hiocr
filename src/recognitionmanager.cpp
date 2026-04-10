@@ -6,6 +6,7 @@ RecognitionManager::RecognitionManager(QObject* parent) : QObject(parent)
 {
     m_networkManager = new NetworkManager(this);
     connect(m_networkManager, &NetworkManager::requestFinished, this, &RecognitionManager::onNetworkFinished);
+    connect(m_networkManager, &NetworkManager::streamDataReceived, this, &RecognitionManager::streamDataReceived);
 
     m_debounceTimer = new QTimer(this);
     m_debounceTimer->setSingleShot(true);

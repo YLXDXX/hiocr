@@ -109,6 +109,7 @@ void AppController::setupManagers()
 }
 
 
+
 void AppController::setupConnections()
 {
     // --- 1. 快捷键 -> 动作 ---
@@ -140,7 +141,7 @@ void AppController::setupConnections()
     connect(m_trayManager, &TrayManager::quitRequested, this, &AppController::quitApp);
 
     // --- 3. MainWindow UI -> Controller ---
-    // 【修改】处理主窗口的识别请求 (通用识别按钮或手动触发)
+    // 处理主窗口的识别请求 (通用识别按钮或手动触发)
     connect(m_mainWindow, &MainWindow::recognizeRequested, this, [this](const QString& prompt, const QString& base64Img){
         ContentType inferredType = ContentType::Text;
         QString currentId = m_settings->currentServiceId();
@@ -154,16 +155,14 @@ void AppController::setupConnections()
         m_lastRecognizeType = inferredType;
         m_recognitionManager->recognize(prompt, base64Img);
     });
+
     connect(m_mainWindow, &MainWindow::typedRecognizeRequested, this, [this](const QString& prompt, const QString& base64, ContentType type){
         m_lastRecognizeType = type;
         m_recognitionManager->recognize(prompt, base64);
     });
 
-
     connect(m_mainWindow, &MainWindow::imagePasted, this, [this](const QImage& img){
         m_mainWindow->setImage(img);
-        // 粘贴图片后，默认识别类型重置为 Text，或者不改变当前设置
-        // m_lastRecognizeType = ContentType::Text;
         m_recognitionManager->onImageChanged(ImageProcessor::imageToBase64(img));
     });
 
@@ -179,7 +178,7 @@ void AppController::setupConnections()
     connect(m_mainWindow, &MainWindow::serviceSelected, this, &AppController::onServiceSelected);
     connect(m_mainWindow, &MainWindow::serviceToggleRequested, this, &AppController::toggleService);
 
-    // 【新增】处理来自 MainWindow 的手动脚本处理请求 (例如菜单栏触发)
+    // 处理来自 MainWindow 的手动脚本处理请求
     connect(m_mainWindow, &MainWindow::manualProcessRequested, this, &AppController::onManualProcessorTriggered);
 
     // --- 4. ScreenshotManager ---
@@ -187,22 +186,56 @@ void AppController::setupConnections()
     connect(m_screenshotManager, &ScreenshotManager::screenshotFailed, this, &AppController::onScreenshotFailed);
 
     // --- 5. RecognitionManager -> Controller ---
+
+    // 【修改】连接流式数据信号
+    connect(m_recognitionManager, &RecognitionManager::streamDataReceived, m_mainWindow, &MainWindow::appendRecognitionResult);
+
+    // 【修改】处理状态变化：识别开始时清空 UI 并开启流式模式
+    connect(m_recognitionManager, &RecognitionManager::busyStateChanged, this, [this](bool busy){
+        if (busy) {
+            // 1. 清空旧结果
+            emit recognitionResultReady(QString());
+            // 2. 【关键】开启流式模式，暂停渲染器自动刷新
+            m_mainWindow->setStreamingMode(true);
+        } else {
+            // 识别结束（无论成功失败），关闭流式模式
+            m_mainWindow->setStreamingMode(false);
+        }
+        emit busyStateChanged(busy);
+    });
+
+    // 【修改】处理识别完成
     connect(m_recognitionManager, &RecognitionManager::recognitionFinished, this, [this](const QString& markdown){
         m_isRetryingAfterSwitch = false;
         m_serviceManager->resetIdleTimer();
-        onRecognitionFinished(markdown); // 统一处理结果
+
+        // 确保关闭流式模式（如果在 busyStateChanged(false) 之前触发）
+        m_mainWindow->setStreamingMode(false);
+
+        // 非流式模式：直接设置全量文本
+        if (!markdown.isEmpty()) {
+            emit recognitionResultReady(markdown);
+        }
+
+        // 获取最终文本
+        QString finalText = m_mainWindow->currentMarkdownSource();
+        m_mainWindow->setRecognizeType(m_lastRecognizeType);
+
+        if (m_settings->autoCopyResult() && !finalText.isEmpty()) {
+            m_copyProcessor->processAndCopy(finalText, m_lastRecognizeType);
+        }
     });
 
-    // 识别失败处理逻辑
+    // 识别失败处理逻辑 (保留原有的自动重试机制)
     connect(m_recognitionManager, &RecognitionManager::recognitionFailed, this, [this](const QString& error){
+        m_mainWindow->setStreamingMode(false); // 确保出错时也关闭流式模式
         if (m_isRetryingAfterSwitch) {
             m_isRetryingAfterSwitch = false;
             emit recognitionFailed(error);
             return;
         }
 
-        // 【修改】扩大网络错误的判定范围，支持更多网络异常情况触发自动启动
-        // 只要包含网络错误关键词，都视为连接失败，尝试恢复
+        // 判断是否为网络连接错误
         bool isNetworkError = error.contains("Connection refused") ||
         error.contains("连接被拒绝") ||
         error.contains("Network error") ||
@@ -210,10 +243,9 @@ void AppController::setupConnections()
         error.contains("Host not found") ||
         error.contains("Connection closed") ||
         error.contains("Timeout") ||
-        error.contains("unreachable"); // 超时强制中断也会触发
+        error.contains("unreachable");
 
         if (!isNetworkError) {
-            // 如果是业务逻辑错误（如认证失败、服务器返回 400/500 错误内容），则不自动重启服务
             emit recognitionFailed(error);
             return;
         }
@@ -245,8 +277,7 @@ void AppController::setupConnections()
                         tryStartId = defaultLocalId;
                         tryStartCommand = p.startCommand;
 
-                        // 【新增】切换当前服务 ID 并更新 UI
-                        // 这样用户能看到界面上的“当前服务”自动从“全局默认”跳到了“本地服务”
+                        // 切换当前服务 ID 并更新 UI
                         m_settings->setCurrentServiceId(defaultLocalId);
                         m_mainWindow->updateServiceSelector(m_settings->serviceProfiles(), defaultLocalId);
 
@@ -273,13 +304,10 @@ void AppController::setupConnections()
         }
     });
 
-    connect(m_recognitionManager, &RecognitionManager::busyStateChanged, this, &AppController::busyStateChanged);
-
     // --- 6. Controller -> MainWindow ---
     connect(this, &AppController::imageChanged, m_mainWindow, &MainWindow::setImage);
     connect(this, &AppController::recognitionResultReady, m_mainWindow, &MainWindow::setRecognitionResult);
     connect(this, &AppController::recognitionFailed, m_mainWindow, &MainWindow::showError);
-    connect(this, &AppController::busyStateChanged, m_mainWindow, &MainWindow::setBusy);
     connect(this, &AppController::requestAreaSelection, m_mainWindow, &MainWindow::startAreaSelection);
 
     // --- 7. 设置变更 ---
@@ -326,14 +354,13 @@ void AppController::setupConnections()
     connect(m_serviceManager, &ServiceManager::runningCountChanged, m_mainWindow, &MainWindow::updateStopAllAction);
 
     // --- 9. CopyProcessor 状态反馈 ---
-    // 假设 m_copyProcessor 在 setupManagers 中初始化
     connect(m_copyProcessor, &CopyProcessor::error, m_mainWindow, &MainWindow::showError);
     connect(m_copyProcessor, &CopyProcessor::finished, this, [this](const QString& result){
         Q_UNUSED(result);
-        // 处理完成后的状态更新，例如状态栏提示
         m_mainWindow->statusBar()->showMessage("内容已处理并复制", 3000);
     });
 }
+
 
 void AppController::onServiceSelected(const QString& id)
 {
@@ -531,22 +558,6 @@ void AppController::applySettings()
     }
 }
 
-// 【修改】识别完成后的处理逻辑
-void AppController::onRecognitionFinished(const QString& markdown)
-{
-    emit recognitionResultReady(markdown);
-
-    // 【新增】通知 MainWindow 当前结果的原始识别类型
-    m_mainWindow->setRecognizeType(m_lastRecognizeType);
-
-    if (m_settings->autoCopyResult()) {
-        if (!markdown.isEmpty()) {
-            // 自动复制逻辑保持不变，由 CopyProcessor 处理
-            // 注意：这里 CopyProcessor 接收到的类型是 m_lastRecognizeType
-            m_copyProcessor->processAndCopy(markdown, m_lastRecognizeType);
-        }
-    }
-}
 
 void AppController::onSingleInstanceMessageReceived(const QByteArray& message)
 {
