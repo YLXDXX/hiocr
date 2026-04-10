@@ -10,6 +10,7 @@
     <script src="qrc:/resources/temml/mhchem.min.js"></script>
     <script src="qrc:/resources/temml/physics.js"></script>
     <script src="qrc:/resources/temml/texvc.js"></script>
+    <script src="qrc:/resources/temml/PhyUnit.js"></script>
 
     <!-- 默认数学字体 -->
     <link rel="stylesheet" href="qrc:/resources/temml/Temml-Latin-Modern.css" id="math-font-css">
@@ -58,7 +59,7 @@
 <body>
     <div id="content"></div>
 
-    <script>
+        <script>
         (function() {
             // 1. Marked 配置
             marked.setOptions({
@@ -66,8 +67,7 @@
                 breaks: true
             });
 
-            // 【新增】HTML 转义辅助函数
-            // 防止公式内的特殊字符（如 < > &）被浏览器解析为 HTML 标签，破坏公式结构
+            // HTML 转义辅助函数
             function escapeHtml(text) {
                 return text
                     .replace(/&/g, "&amp;")
@@ -75,123 +75,68 @@
                     .replace(/>/g, "&gt;");
             }
 
-            // 2. 公式扩展定义
-
-            // 块级公式扩展 (处理 $$...$$)
+            // 2. 公式扩展定义 (保持不变)
             const blockMathExtension = {
                 name: 'blockMath',
                 level: 'block',
-                start(src) {
-                    const match = src.match(/^ {0,3}\$\$/m);
-                    return match ? match.index : -1;
-                },
+                start(src) { const match = src.match(/^ {0,3}\$\$/m); return match ? match.index : -1; },
                 tokenizer(src, tokens) {
                     const rule = /^ {0,3}\$\$([\s\S]+?)\$\$(?:\n+|$)/;
                     const match = rule.exec(src);
-                    if (match) {
-                        return {
-                            type: 'blockMath',
-                            raw: match[0],
-                            text: match[0],
-                            display: true
-                        };
-                    }
+                    if (match) { return { type: 'blockMath', raw: match[0], text: match[0], display: true }; }
                     return false;
                 },
-                renderer(token) {
-                    return escapeHtml(token.text); // 修复：转义输出
-                }
+                renderer(token) { return escapeHtml(token.text); }
             };
 
-            // 行内公式扩展 (处理 $...$)
             const inlineMathExtension = {
                 name: 'inlineMath',
                 level: 'inline',
                 start(src) { return src.indexOf('$'); },
                 tokenizer(src, tokens) {
                     const match = src.match(/^\$((?:[^\$]|\\\$)+?)\$/);
-                    if (match) {
-                        return {
-                            type: 'inlineMath',
-                            raw: match[0],
-                            text: match[0],
-                            display: false
-                        };
-                    }
+                    if (match) { return { type: 'inlineMath', raw: match[0], text: match[0], display: false }; }
                     return false;
                 },
-                renderer(token) {
-                    return escapeHtml(token.text); // 修复：转义输出
-                }
+                renderer(token) { return escapeHtml(token.text); }
             };
 
-            // 块级公式扩展 (处理 \[...\])
             const blockMathBracketExtension = {
                 name: 'blockMathBracket',
                 level: 'block',
-                start(src) {
-                    const match = src.match(/^ {0,3}\\\[/m);
-                    return match ? match.index : -1;
-                },
+                start(src) { const match = src.match(/^ {0,3}\\\[/m); return match ? match.index : -1; },
                 tokenizer(src, tokens) {
                     const rule = /^ {0,3}\\\[[\s\S]+?\\\](?:\n+|$)/;
                     const match = rule.exec(src);
-                    if (match) {
-                        return {
-                            type: 'blockMathBracket',
-                            raw: match[0],
-                            text: match[0],
-                            display: true
-                        };
-                    }
+                    if (match) { return { type: 'blockMathBracket', raw: match[0], text: match[0], display: true }; }
                     return false;
                 },
-                renderer(token) {
-                    return escapeHtml(token.text); // 修复：转义输出
-                }
+                renderer(token) { return escapeHtml(token.text); }
             };
 
-            // 行内公式扩展 (处理 \(...\))
             const inlineMathParenExtension = {
                 name: 'inlineMathParen',
                 level: 'inline',
                 start(src) { return src.indexOf('\\('); },
                 tokenizer(src, tokens) {
                     const match = src.match(/^\\\(([\s\S]+?)\\\)/);
-                    if (match) {
-                        return {
-                            type: 'inlineMathParen',
-                            raw: match[0],
-                            text: match[0],
-                            display: false
-                        };
-                    }
+                    if (match) { return { type: 'inlineMathParen', raw: match[0], text: match[0], display: false }; }
                     return false;
                 },
-                renderer(token) {
-                    return escapeHtml(token.text); // 修复：转义输出
-                }
+                renderer(token) { return escapeHtml(token.text); }
             };
 
-            // 注册扩展
-            marked.use({ extensions: [
-                blockMathExtension,
-                inlineMathExtension,
-                blockMathBracketExtension,
-                inlineMathParenExtension
-            ]});
+            marked.use({ extensions: [blockMathExtension, inlineMathExtension, blockMathBracketExtension, inlineMathParenExtension] });
 
-            // 3. 字体切换函数 (由 Qt 调用)
+            // 3. 字体切换函数
             function updateMathFont(fontName) {
                 var link = document.getElementById('math-font-css');
                 if (!link) return;
                 var newHref = 'qrc:/resources/temml/Temml-' + fontName + '.css';
-                if (link.getAttribute('href') !== newHref) {
-                    link.setAttribute('href', newHref);
-                }
+                if (link.getAttribute('href') !== newHref) { link.setAttribute('href', newHref); }
             }
 
-            // 4. 渲染函数
+            // 4. 渲染函数 (已修改)
             function renderMarkdown(markdown) {
                 var contentDiv = document.getElementById('content');
                 var oldScrollTop = document.documentElement.scrollTop || document.body.scrollTop;
@@ -199,7 +144,14 @@
                 if (!markdown) { contentDiv.innerHTML = ''; return; }
 
                 try {
+                    // === 修改点 1: 在渲染前预处理 LaTeX 单位命令 ===
+                    // 检查 PhyUnit.js 是否成功加载了预处理函数
+                    if (typeof temml !== 'undefined' && typeof temml.preprocessLatexUnits === 'function') {
+                        markdown = temml.preprocessLatexUnits(markdown);
+                    }
+
                     contentDiv.innerHTML = marked.parse(markdown);
+
                     if (typeof temml !== 'undefined') {
                         temml.renderMathInElement(contentDiv, {
                             delimiters: [
@@ -208,7 +160,9 @@
                                 { left: '\\(', right: '\\)', display: false },
                                 { left: '\\[', right: '\\]', display: true }
                             ],
-                            trust: true, macros: {}
+                            trust: true
+                            // === 修改点 2: 移除了 macros: {} ===
+                            // 移除此项后，PhyUnit.js 中定义的全局宏才能生效
                         });
                     }
                 } catch (e) {
@@ -224,22 +178,11 @@
             // 5. Qt WebChannel 初始化
             new QWebChannel(qt.webChannelTransport, function(channel) {
                 window.bridge = channel.objects.bridge;
-
-                // 连接 Markdown 变化信号
                 bridge.markdownChanged.connect(renderMarkdown);
-
-                // 连接字体变化信号
                 bridge.mathFontChanged.connect(updateMathFont);
 
-                // 初始渲染
-                if (bridge.markdown) {
-                    renderMarkdown(bridge.markdown);
-                }
-
-                // 初始字体应用
-                if (bridge.mathFont) {
-                    updateMathFont(bridge.mathFont);
-                }
+                if (bridge.markdown) { renderMarkdown(bridge.markdown); }
+                if (bridge.mathFont) { updateMathFont(bridge.mathFont); }
             });
         })();
     </script>
