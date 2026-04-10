@@ -11,10 +11,6 @@
     <script src="qrc:/resources/temml/physics.js"></script>
     <script src="qrc:/resources/temml/texvc.js"></script>
 
-    <!-- 代码高亮 -->
-    <script src="qrc:/resources/highlight/highlight.min.js"></script>
-    <link rel="stylesheet" href="qrc:/resources/highlight/atom-one-dark.min.css">
-
     <!-- 默认数学字体 -->
     <link rel="stylesheet" href="qrc:/resources/temml/Temml-Latin-Modern.css" id="math-font-css">
 
@@ -67,13 +63,7 @@
             // 1. Marked 配置
             marked.setOptions({
                 gfm: true,
-                breaks: true,
-                highlight: function(code, lang) {
-                    if (typeof hljs !== 'undefined' && lang && hljs.getLanguage(lang)) {
-                        try { return hljs.highlight(code, { language: lang }).value; } catch (e) {}
-                    }
-                    return code;
-                }
+                breaks: true
             });
 
             // 【新增】HTML 转义辅助函数

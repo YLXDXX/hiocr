@@ -2,8 +2,6 @@
     <qresource prefix="/">
         <file>resources/markdown_renderer.html</file>
         <file>resources/marked.min.js</file>
-        <file>resources/highlight/highlight.min.js</file>
-        <file>resources/highlight/atom-one-dark.min.css</file>
         <file>resources/temml/Asana-Math.woff2</file>
         <file>resources/temml/copy-tex.min.js</file>
         <file>resources/temml/latinmodernmath.woff2</file>
