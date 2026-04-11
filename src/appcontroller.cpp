@@ -446,7 +446,7 @@ void AppController::toggleService(const QString& id)
 
 void AppController::applyServiceConfig(const QString& serviceId)
 {
-    QString textP, formulaP, tableP, url, apiKey, modelName;
+    QString textP, formulaP, tableP, url, apiKey, modelName, serviceName;
 
     if (serviceId.isEmpty()) {
         // 使用全局默认设置
@@ -454,21 +454,20 @@ void AppController::applyServiceConfig(const QString& serviceId)
         formulaP = m_settings->formulaPrompt();
         tableP = m_settings->tablePrompt();
         url = m_settings->serverUrl();
-
-        // 【修改】从全局设置读取 API Key 和 Model Name
         apiKey = m_settings->globalApiKey();
         modelName = m_settings->globalModelName();
+        serviceName = QString(); // 全局默认无服务名称
     } else {
         // 使用特定服务配置
         ServiceProfile p = m_settings->getServiceProfile(serviceId);
         if (p.isEmpty()) {
-            // 回退逻辑...
             textP = m_settings->textPrompt();
             formulaP = m_settings->formulaPrompt();
             tableP = m_settings->tablePrompt();
             url = m_settings->serverUrl();
             apiKey = m_settings->globalApiKey();
             modelName = m_settings->globalModelName();
+            serviceName = QString();
         } else {
             textP = p.textPrompt;
             formulaP = p.formulaPrompt;
@@ -476,6 +475,7 @@ void AppController::applyServiceConfig(const QString& serviceId)
             url = p.serverUrl;
             apiKey = p.apiKey;
             modelName = p.modelName;
+            serviceName = p.name; // 【新增】获取服务名称
         }
     }
 
@@ -483,7 +483,19 @@ void AppController::applyServiceConfig(const QString& serviceId)
     m_recognitionManager->setApiKey(apiKey);
     m_recognitionManager->setModelName(modelName);
 
-    qDebug() << "Applied service config. URL:" << url << "Model:" << modelName;
+    // 【新增】保存当前服务名称并同步到所有组件
+    m_currentServiceName = serviceName;
+
+    // 同步到 MainWindow（渲染器 + 复制栏）
+    m_mainWindow->setCurrentServiceName(serviceName);
+
+    // 同步到 AppController 自己的 CopyProcessor（自动复制路径）
+    if (m_copyProcessor) {
+        m_copyProcessor->setServiceName(serviceName);
+    }
+
+    qDebug() << "Applied service config. Name:" << serviceName
+    << "URL:" << url << "Model:" << modelName;
 
     m_mainWindow->setCurrentPrompts(textP, formulaP, tableP);
     m_mainWindow->setPrompt(textP);

@@ -5,13 +5,12 @@
 #include <QMainWindow>
 #include <QProcess>
 #include "settingsmanager.h"
-#include "copyprocessor.h" // 【修改】包含 ContentType 定义
+#include "copyprocessor.h"
 
-// 【修改】添加前置声明
 class QCheckBox;
 class ImageViewWidget;
 class MarkdownRenderer;
-class MarkdownSourceEditor; // 前置声明
+class MarkdownSourceEditor;
 class PromptBar;
 class QShortcut;
 class MarkdownCopyBar;
@@ -37,11 +36,12 @@ public:
 
     void setCurrentPrompts(const QString& text, const QString& formula, const QString& table);
 
+    // 【新增】设置当前服务名称，同步到渲染器和复制栏
+    void setCurrentServiceName(const QString& name);
+
     void startAreaSelection(const QImage& fullImage);
 
-    // 【修改】移除内联实现，改为仅声明，实现在 .cpp 中
     QString currentMarkdownSource() const;
-
     bool hasImage() const;
     QImage currentImage() const;
 
@@ -52,7 +52,6 @@ public slots:
 
     void updateScriptCheckboxes();
     void setRecognizeType(ContentType type);
-
 
     void onCopyCurrentImage();
     void updateCopyImageActionState();
@@ -95,29 +94,25 @@ private:
 
     ImageViewWidget* m_imageView;
     MarkdownRenderer* m_markdownRenderer;
-    MarkdownSourceEditor* m_markdownSource; // 指针成员
+    MarkdownSourceEditor* m_markdownSource;
     PromptBar* m_promptBar;
     QShortcut* m_pasteShortcut;
     MarkdownCopyBar* m_copyBar;
 
-    // 【修改】移除旧的菜单栏相关成员，改用 ToolBar
     QToolBar* m_mainToolBar = nullptr;
-
-    // 这些变量保持不变，用于填充工具栏
     QComboBox* m_serviceSelector = nullptr;
     QPushButton* m_serviceToggleBtn = nullptr;
     QAction* m_stopAllServicesAction = nullptr;
     QAction* m_copyImageAction = nullptr;
     QAction* m_viewHistoryAction = nullptr;
 
-    // 脚本处理控件保持不变
     QCheckBox* m_scriptGlobalCheck = nullptr;
     QCheckBox* m_scriptTextCheck = nullptr;
     QCheckBox* m_scriptFormulaCheck = nullptr;
     QCheckBox* m_scriptTableCheck = nullptr;
     QCheckBox* m_scriptPureMathCheck = nullptr;
 
-    bool m_isStreaming = false; // 是否处于流式输入模式
+    bool m_isStreaming = false;
 };
 
 #endif // MAINWINDOW_H

@@ -6,9 +6,9 @@
 
 class MarkdownBridge : public QObject {
     Q_OBJECT
-    // 添加 mathFont 属性，使其在 JS 中可访问
     Q_PROPERTY(QString markdown READ markdown WRITE setMarkdown NOTIFY markdownChanged)
     Q_PROPERTY(QString mathFont READ mathFont WRITE setMathFont NOTIFY mathFontChanged)
+    Q_PROPERTY(QString serviceName READ serviceName WRITE setServiceName NOTIFY serviceNameChanged)
 
 public:
     explicit MarkdownBridge(QObject* parent = nullptr) : QObject(parent) {}
@@ -21,7 +21,6 @@ public:
         }
     }
 
-    // 【新增】
     QString mathFont() const { return m_mathFont; }
     void setMathFont(const QString& font) {
         if (m_mathFont != font) {
@@ -30,13 +29,24 @@ public:
         }
     }
 
+    // 【新增】当前服务名称，用于 JS 判断渲染模式
+    QString serviceName() const { return m_serviceName; }
+    void setServiceName(const QString& name) {
+        if (m_serviceName != name) {
+            m_serviceName = name;
+            emit serviceNameChanged(name);
+        }
+    }
+
 signals:
     void markdownChanged(const QString& markdown);
-    void mathFontChanged(const QString& font); // 【新增】
+    void mathFontChanged(const QString& font);
+    void serviceNameChanged(const QString& name); // 【新增】
 
 private:
     QString m_markdown;
-    QString m_mathFont; // 【新增】
+    QString m_mathFont;
+    QString m_serviceName; // 【新增】
 };
 
 #endif // MARKDOWNBRIDGE_H

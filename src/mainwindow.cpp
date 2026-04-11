@@ -590,3 +590,16 @@ QImage MainWindow::currentImage() const
     }
     return QImage();
 }
+
+void MainWindow::setCurrentServiceName(const QString& name)
+{
+    // 同步到渲染器（通过 Bridge → JS 判断渲染模式）
+    if (m_markdownRenderer) {
+        m_markdownRenderer->setServiceName(name);
+    }
+
+    // 同步到复制栏（判断复制行为 + 传递 --mode-name）
+    if (m_copyBar) {
+        m_copyBar->setCurrentServiceName(name);
+    }
+}

@@ -57,6 +57,26 @@ void MarkdownCopyBar::setOriginalRecognizeType(ContentType type)
     }
 }
 
+// 【新增】
+void MarkdownCopyBar::setCurrentServiceName(const QString& name)
+{
+    m_currentServiceName = name;
+    // 同步到 CopyProcessor
+    if (m_processor) {
+        m_processor->setServiceName(name);
+    }
+    // 更新按钮状态
+    if (m_sourceEdit) {
+        updateButtonState(m_sourceEdit->toPlainText());
+    }
+}
+
+// 【新增】
+bool MarkdownCopyBar::isChandraService() const
+{
+    return m_currentServiceName.contains("chandra", Qt::CaseInsensitive);
+}
+
 void MarkdownCopyBar::onSourceTextChanged()
 {
     if (!m_sourceEdit) return;
@@ -68,7 +88,14 @@ void MarkdownCopyBar::updateButtonState(const QString& content)
 {
     QString trimmed = content.trimmed();
 
-    // 【修改】扩展界定符检测
+    // 【修改】Chandra 模式下，禁用行内/行间按钮
+    if (isChandraService() && trimmed.contains("<math")) {
+        m_currentType = ContentType::MixedContent;
+        m_btnInline->setEnabled(false);
+        m_btnDisplay->setEnabled(false);
+        return;
+    }
+
     bool isDisplay = (trimmed.startsWith("$$") && trimmed.endsWith("$$")) ||
     (trimmed.startsWith("\\[") && trimmed.endsWith("\\]"));
 
@@ -77,11 +104,9 @@ void MarkdownCopyBar::updateButtonState(const QString& content)
 
     if (isDisplay || isInline) {
         m_currentType = ContentType::Formula;
-        // 如果包含双换行，通常认为是混合内容（段落+公式）
         if (trimmed.contains("\n\n")) {
             m_currentType = ContentType::MixedContent;
         }
-        // 如果是 $$ 且中间出现多次，视为混合
         if (trimmed.startsWith("$$") && trimmed.count("$$") > 2) {
             m_currentType = ContentType::MixedContent;
         }
@@ -90,17 +115,24 @@ void MarkdownCopyBar::updateButtonState(const QString& content)
     }
 
     m_btnInline->setEnabled(m_currentType == ContentType::Formula);
+    m_btnDisplay->setEnabled(true);
 }
 
 void MarkdownCopyBar::onCopyOriginal()
 {
     if (!m_sourceEdit) return;
     QString content = m_sourceEdit->toPlainText().trimmed();
+
+    // 【修改】Chandra 模式下，直接将原始内容通过 CopyProcessor 处理
+    // CopyProcessor 会自动附加 --mode-name 参数
+    if (isChandraService() && content.contains("<math")) {
+        m_processor->processAndCopy(content, m_originalRecognizeType);
+        return;
+    }
+
     QString finalText;
 
-    // 提取内容逻辑
     if (m_currentType == ContentType::Formula) {
-        // 【修改】支持四种界定符的剥离
         if (content.startsWith("$$") && content.endsWith("$$")) {
             finalText = content.mid(2, content.length() - 4).trimmed();
         } else if (content.startsWith("\\[") && content.endsWith("\\]")) {
@@ -130,11 +162,17 @@ void MarkdownCopyBar::onCopyInline()
 {
     if (!m_sourceEdit) return;
     QString content = m_sourceEdit->toPlainText().trimmed();
+
+    // 【修改】Chandra 模式下，走通用处理
+    if (isChandraService() && content.contains("<math")) {
+        m_processor->processAndCopy(content, m_originalRecognizeType);
+        return;
+    }
+
     if (m_currentType != ContentType::Formula) return;
 
     QString core;
 
-    // 【修改】统一提取核心逻辑
     if (content.startsWith("$$") && content.endsWith("$$")) {
         core = content.mid(2, content.length() - 4).trimmed();
     } else if (content.startsWith("\\[") && content.endsWith("\\]")) {
@@ -147,7 +185,6 @@ void MarkdownCopyBar::onCopyInline()
         core = content;
     }
 
-    // 强制包裹为 $...$ (标准行内)
     m_processor->processAndCopy("$" + core + "$", m_originalRecognizeType);
 }
 
@@ -155,19 +192,22 @@ void MarkdownCopyBar::onCopyDisplay()
 {
     if (!m_sourceEdit) return;
     QString content = m_sourceEdit->toPlainText();
+
+    // 【修改】Chandra 模式下，走通用处理
+    if (isChandraService() && content.contains("<math")) {
+        m_processor->processAndCopy(content, m_originalRecognizeType);
+        return;
+    }
+
     QString finalText;
     QString env = SettingsManager::instance()->displayMathEnvironment();
 
-    // 【修改】更新 Lambda 支持四种界定符
     auto extractContent = [](const QString& raw) -> QString {
         QString t = raw.trimmed();
-
-        // 优先匹配长界定符（先匹配 $$ 和 \[ \]，再匹配单 $ 和 \( \)）
         if (t.startsWith("$$") && t.endsWith("$$")) return t.mid(2, t.length() - 4).trimmed();
         if (t.startsWith("\\[") && t.endsWith("\\]")) return t.mid(2, t.length() - 4).trimmed();
         if (t.startsWith("\\(") && t.endsWith("\\)")) return t.mid(2, t.length() - 4).trimmed();
         if (t.startsWith("$") && t.endsWith("$")) return t.mid(1, t.length() - 2).trimmed();
-
         return t;
     };
 
@@ -179,21 +219,15 @@ void MarkdownCopyBar::onCopyDisplay()
             finalText = "\\begin{" + env + "}\n\t" + core + "\n\\end{" + env + "}";
         }
     } else {
-        // 混合内容替换逻辑
         finalText = content;
-        QRegularExpression re("\\$\\$([\\s\\S]*?)\\$\\$"); // 注意：混合内容的正则替换比较复杂，这里暂保留原逻辑
-        // 注意：如果混合内容中包含 \[...\]，上面的正则不会匹配到。
-        // 建议混合内容的处理逻辑保持原样，或者用户需确保混合内容使用的是 $$。
-
+        QRegularExpression re("\\$\\$([\\s\\S]*?)\\$\\$");
         QRegularExpressionMatchIterator it = re.globalMatch(finalText);
         QString resultText;
         int lastEnd = 0;
-
         while (it.hasNext()) {
             QRegularExpressionMatch match = it.next();
             resultText += finalText.mid(lastEnd, match.capturedStart() - lastEnd);
             QString mathCore = match.captured(1).trimmed();
-
             if (env == "$$") {
                 resultText += "$$\n" + mathCore + "\n$$";
             } else {

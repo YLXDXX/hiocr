@@ -15,9 +15,10 @@ class MarkdownCopyBar : public QWidget
 public:
     explicit MarkdownCopyBar(QWidget* parent = nullptr);
     void setSourceEditor(QPlainTextEdit* editor);
-
-    // 【新增】设置当前内容的原始识别类型
     void setOriginalRecognizeType(ContentType type);
+
+    // 【新增】设置当前服务名称，用于判断复制行为
+    void setCurrentServiceName(const QString& name);
 
     void executeCopy(const QString& text);
 
@@ -31,6 +32,9 @@ private:
     void setupUi();
     void updateButtonState(const QString& content);
 
+    // 【新增】判断当前服务是否为 Chandra 模式
+    bool isChandraService() const;
+
     QPushButton* m_btnOriginal;
     QPushButton* m_btnInline;
     QPushButton* m_btnDisplay;
@@ -38,8 +42,11 @@ private:
     QPlainTextEdit* m_sourceEdit = nullptr;
     CopyProcessor* m_processor = nullptr;
 
-    ContentType m_currentType;           // 当前内容的结构类型 (Formula, Mixed, Text)
-    ContentType m_originalRecognizeType; // 【新增】原始识别类型 (Text, Formula, Table)
+    ContentType m_currentType;
+    ContentType m_originalRecognizeType;
+
+    // 【新增】当前服务名称
+    QString m_currentServiceName;
 };
 
 #endif // MARKDOWNCOPYBAR_H
