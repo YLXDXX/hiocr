@@ -90,17 +90,34 @@ void ScreenshotManager::onPortalResponse(uint response, const QVariantMap& resul
 
     QUrl url(uri);
     QString localPath = url.toLocalFile();
-    QImage fullScreenshot(localPath);
 
-    // 删除临时文件
-    QFile::remove(localPath);
+    // 【修复 libpng error】先读取到内存，再删除文件，避免文件句柄占用导致读取截断
+    QImage fullScreenshot;
+    QFile file(localPath);
+    if (file.open(QIODevice::ReadOnly)) {
+        QByteArray imageData = file.readAll();
+        file.close();
+
+        // 数据读入内存后，立即删除临时文件
+        QFile::remove(localPath);
+
+        // 从内存数据加载图片
+        if (!fullScreenshot.loadFromData(imageData)) {
+            emit screenshotFailed("无法解析截图图像数据");
+            return;
+        }
+    } else {
+        QFile::remove(localPath);
+        emit screenshotFailed("无法读取截图临时文件");
+        return;
+    }
 
     if (fullScreenshot.isNull()) {
         emit screenshotFailed("无法加载截图图像");
         return;
     }
 
-    // 【修改】直接发出全屏截图信号，不再在此处弹出选区对话框
+    // 直接发出全屏截图信号，不再在此处弹出选区对话框
     emit screenshotCaptured(fullScreenshot);
 }
 

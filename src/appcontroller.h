@@ -56,7 +56,6 @@ private slots:
     void onManualProcessorTriggered(ContentType type);
     void onSilentNotificationClicked();
 
-    void onFloatingBallRightClicked();
     void onFloatingBallPositionChanged(const QPoint& pos);
     void onFloatingBallSettingsChanged();
 

@@ -415,10 +415,6 @@ void AppController::setupConnections()
 
     connect(m_serviceManager, &ServiceManager::runningCountChanged, m_mainWindow, &MainWindow::updateStopAllAction);
 
-    // --- 静默模式通知交互 ---
-    connect(m_floatingBall, &FloatingBall::clicked, this, &AppController::onSilentNotificationClicked);
-    connect(m_trayManager, &TrayManager::notificationClicked, this, &AppController::onSilentNotificationClicked);
-
     // 静默模式被关闭时，隐藏悬浮球
     connect(m_settings, &SettingsManager::silentModeEnabledChanged, this, [this](bool enabled){
         if (!enabled && m_floatingBall) {
@@ -427,7 +423,9 @@ void AppController::setupConnections()
     });
 
     // --- 悬浮球交互 ---
-    connect(m_floatingBall, &FloatingBall::rightClicked, this, &AppController::onFloatingBallRightClicked);
+    connect(m_floatingBall, &FloatingBall::screenshotTriggered, this, &AppController::takeScreenshot);
+    connect(m_floatingBall, &FloatingBall::showWindowTriggered, this, &AppController::onSilentNotificationClicked);
+    // 连接位置变更信号，保存用户拖动后的位置到设置
     connect(m_floatingBall, &FloatingBall::positionChanged, this, &AppController::onFloatingBallPositionChanged);
 
     // 设置实时应用
@@ -545,13 +543,18 @@ void AppController::applyServiceConfig(const QString& serviceId)
 
 void AppController::takeScreenshot() {
     m_pendingPromptOverride = "";
+
+    // 【修改】隐藏前保存位置，以便截图完成后恢复
+    if (m_floatingBall) {
+        m_floatingBall->savePosition();
+        m_floatingBall->hide();
+    }
+
     m_screenshotManager->takeScreenshot();
 }
 
-// 【修改】更新截图识别函数以记录类型
 void AppController::takeTextRecognizeScreenshot() {
     m_lastRecognizeType = ContentType::Text;
-    // ... 原有逻辑 ...
     QString currentId = m_settings->currentServiceId();
     QString prompt;
     if (currentId.isEmpty()) prompt = m_settings->textPrompt();
@@ -559,6 +562,13 @@ void AppController::takeTextRecognizeScreenshot() {
 
     m_pendingPromptOverride = prompt;
     m_mainWindow->setPrompt(prompt);
+
+    // 【修改】隐藏前保存位置
+    if (m_floatingBall) {
+        m_floatingBall->savePosition();
+        m_floatingBall->hide();
+    }
+
     m_screenshotManager->takeScreenshot();
 }
 
@@ -571,6 +581,13 @@ void AppController::takeFormulaRecognizeScreenshot() {
 
     m_pendingPromptOverride = prompt;
     m_mainWindow->setPrompt(prompt);
+
+    // 【修改】隐藏前保存位置
+    if (m_floatingBall) {
+        m_floatingBall->savePosition();
+        m_floatingBall->hide();
+    }
+
     m_screenshotManager->takeScreenshot();
 }
 
@@ -583,6 +600,13 @@ void AppController::takeTableRecognizeScreenshot() {
 
     m_pendingPromptOverride = prompt;
     m_mainWindow->setPrompt(prompt);
+
+    // 【修改】隐藏前保存位置
+    if (m_floatingBall) {
+        m_floatingBall->savePosition();
+        m_floatingBall->hide();
+    }
+
     m_screenshotManager->takeScreenshot();
 }
 
@@ -609,16 +633,31 @@ void AppController::onScreenshotCaptured(const QImage& image) {
 }
 
 void AppController::onScreenshotFailed(const QString& error) {
+    // 截图失败，恢复悬浮球显示
+    if (m_floatingBall && m_settings->floatingBallAlwaysVisible()) {
+        m_floatingBall->setState(FloatingBall::Idle);
+    }
+
     if (m_mainWindow && m_mainWindow->isVisible()) {
         emit recognitionFailed(error);
     }
 }
 
 void AppController::onAreaSelected(const QRect& rect) {
-    if (m_pendingFullScreenshot.isNull()) return;
+    if (m_pendingFullScreenshot.isNull()) {
+        // 恢复悬浮球显示
+        if (m_floatingBall && m_settings->floatingBallAlwaysVisible()) {
+            m_floatingBall->setState(FloatingBall::Idle);
+        }
+        return;
+    }
 
     if (rect.isNull() || rect.isEmpty()) {
         m_pendingFullScreenshot = QImage();
+        // 用户取消了截图（按了ESC），恢复悬浮球显示
+        if (m_floatingBall && m_settings->floatingBallAlwaysVisible()) {
+            m_floatingBall->setState(FloatingBall::Idle);
+        }
         return;
     }
 
@@ -634,12 +673,16 @@ void AppController::onAreaSelected(const QRect& rect) {
             m_pendingPromptOverride.clear();
         }
         m_recognitionManager->onImageChanged(base64);
+        // 注意：这里不需要手动 show 悬浮球，因为识别开始后，busyStateChanged 逻辑会自动将其设置为 "识别中" 并显示
     } else {
         emit recognitionResultReady(QString());
+        // 如果不自动识别，恢复悬浮球显示
+        if (m_floatingBall && m_settings->floatingBallAlwaysVisible()) {
+            m_floatingBall->setState(FloatingBall::Idle);
+        }
     }
 
     QTimer::singleShot(0, this, [this](){
-        // 静默模式下不自动显示主窗口
         if (!m_settings->silentModeEnabled()) {
             showWindow();
         }
@@ -720,13 +763,6 @@ void AppController::onSilentNotificationClicked()
 {
     // 点击通知或悬浮球时，打开主窗口查看结果
     showWindow();
-}
-
-
-void AppController::onFloatingBallRightClicked()
-{
-    // 右键点击悬浮球触发截图
-    takeScreenshot();
 }
 
 void AppController::onFloatingBallPositionChanged(const QPoint& pos)

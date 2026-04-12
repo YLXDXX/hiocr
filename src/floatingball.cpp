@@ -9,14 +9,13 @@
 #include <QWindow>
 
 FloatingBall::FloatingBall(QWidget* parent)
-// 【关键修复】构造时一次性设置所有标志位，绝不在显示后再次调用 setWindowFlags()
-// Qt::Tool: 不在任务栏显示
-// Qt::WindowStaysOnTopHint: KWin Wayland 会将其保持在上层
-// Qt::WindowDoesNotAcceptFocus: 点击悬浮球时不抢夺当前输入焦点（比如你在打字时不会被打断）
+// 使用 Qt::Tool 替代 Qt::Dialog，作为不占任务栏的辅助窗口
+// 在 Wayland 下，无论是 Tool 还是 Dialog 都无法绕过合成器强制全局置顶
+// 这是 Wayland 的安全策略
 : QWidget(parent, Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::Tool | Qt::WindowDoesNotAcceptFocus)
 {
     setAttribute(Qt::WA_TranslucentBackground);
-    setAttribute(Qt::WA_ShowWithoutActivating); // 显示时不抢焦点
+    setAttribute(Qt::WA_ShowWithoutActivating);
 
     SettingsManager* s = SettingsManager::instance();
     m_size = s->floatingBallSize();
@@ -96,13 +95,13 @@ void FloatingBall::setState(State state, const QString& message)
             }
             break;
         case Recognizing:
-            setToolTip(message.isEmpty() ? QString::fromUtf8("正在识别... (右键截图)") : message);
+            setToolTip(message.isEmpty() ? QString::fromUtf8("正在识别... (左键截图)") : message);
             m_animationAngle = 0;
             m_animationTimer->start();
             show();
             break;
         case Success:
-            setToolTip(message.isEmpty() ? QString::fromUtf8("识别完成 (左键查看，右键截图)") : message);
+            setToolTip(message.isEmpty() ? QString::fromUtf8("识别完成 (左键截图，右键查看)") : message);
             show();
             update();
             if (m_autoHideTime > 0) {
@@ -110,7 +109,7 @@ void FloatingBall::setState(State state, const QString& message)
             }
             break;
         case Error:
-            setToolTip(message.isEmpty() ? QString::fromUtf8("识别错误 (左键查看，右键截图)") : message);
+            setToolTip(message.isEmpty() ? QString::fromUtf8("识别错误 (左键截图，右键查看)") : message);
             show();
             update();
             if (m_autoHideTime > 0) {
@@ -136,11 +135,26 @@ void FloatingBall::onAnimationTick()
     update();
 }
 
+void FloatingBall::savePosition()
+{
+    m_savedPos = pos();
+    m_needsPositionRestore = true;
+}
+
 void FloatingBall::showEvent(QShowEvent* event)
 {
     QWidget::showEvent(event);
-    // 只需 raise 即可，无需其他操作
     raise();
+
+    // 【新增】如果位置在隐藏前被保存过（如截图前），则恢复到原位置
+    // 这解决了某些窗口管理器在 show() 时将 Qt::Tool 窗口重置到屏幕中央的问题
+    if (m_needsPositionRestore) {
+        bool isWayland = QGuiApplication::platformName() == "wayland";
+        if (!isWayland && !m_savedPos.isNull()) {
+            move(m_savedPos);
+        }
+        m_needsPositionRestore = false;
+    }
 }
 
 void FloatingBall::paintEvent(QPaintEvent* event)
@@ -225,7 +239,8 @@ void FloatingBall::paintEvent(QPaintEvent* event)
 
 void FloatingBall::mousePressEvent(QMouseEvent* event)
 {
-    if (event->button() == Qt::LeftButton || event->button() == Qt::RightButton) {
+    // 右键按住准备拖动
+    if (event->button() == Qt::RightButton) {
         m_dragStartPos = event->globalPosition().toPoint() - pos();
         m_dragging = false;
     }
@@ -233,12 +248,11 @@ void FloatingBall::mousePressEvent(QMouseEvent* event)
 
 void FloatingBall::mouseMoveEvent(QMouseEvent* event)
 {
-    // 仅左键可拖动
-    if (event->buttons() & Qt::LeftButton) {
+    // 右键按住移动时执行拖动
+    if (event->buttons() & Qt::RightButton) {
         QPoint currentPos = event->globalPosition().toPoint();
         QPoint diff = currentPos - pos() - m_dragStartPos;
 
-        // 检测到拖动意图时，交由合成器接管拖动
         if (!m_dragging && diff.manhattanLength() > 5) {
             m_dragging = true;
             QWindow* wnd = windowHandle();
@@ -252,16 +266,19 @@ void FloatingBall::mouseMoveEvent(QMouseEvent* event)
 void FloatingBall::mouseReleaseEvent(QMouseEvent* event)
 {
     if (event->button() == Qt::LeftButton) {
-        if (!m_dragging) {
-            emit clicked();
-        } else {
+        // 左键点击：触发截图
+        emit screenshotTriggered();
+    } else if (event->button() == Qt::RightButton) {
+        if (m_dragging) {
+            // 右键拖动结束：保存位置
             bool isWayland = QGuiApplication::platformName() == "wayland";
             if (!isWayland) {
                 emit positionChanged(pos());
             }
+        } else {
+            // 右键点击（未拖动）：显示主窗口
+            emit showWindowTriggered();
         }
-    } else if (event->button() == Qt::RightButton) {
-        emit rightClicked();
     }
     m_dragging = false;
 }
