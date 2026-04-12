@@ -32,6 +32,8 @@ void SettingsManager::initializeDefaults()
         m_settings.setValue("server/model_name", Constants::DEFAULT_GLOBAL_MODEL_NAME);
         m_settings.setValue("history/save_enabled", Constants::DEFAULT_SAVE_HISTORY);
         m_settings.setValue("history/limit", Constants::DEFAULT_HISTORY_LIMIT);
+        m_settings.setValue("behavior/silent_mode_enabled", Constants::DEFAULT_SILENT_MODE_ENABLED);
+        m_settings.setValue("behavior/silent_mode_notification_type", Constants::DEFAULT_SILENT_MODE_NOTIFICATION_TYPE);
 
         m_settings.setValue("shortcuts/screenshot", Constants::SHORTCUT_SCREENSHOT);
         m_settings.setValue("shortcuts/text_recognize", Constants::SHORTCUT_TEXT);
@@ -133,6 +135,15 @@ void SettingsManager::initializeDefaults()
 
         if (!m_settings.contains("network/request_timeout")) {
             m_settings.setValue("network/request_timeout", Constants::DEFAULT_REQUEST_TIMEOUT);
+            needsSync = true;
+        }
+
+        if (!m_settings.contains("behavior/silent_mode_enabled")) {
+            m_settings.setValue("behavior/silent_mode_enabled", Constants::DEFAULT_SILENT_MODE_ENABLED);
+            needsSync = true;
+        }
+        if (!m_settings.contains("behavior/silent_mode_notification_type")) {
+            m_settings.setValue("behavior/silent_mode_notification_type", Constants::DEFAULT_SILENT_MODE_NOTIFICATION_TYPE);
             needsSync = true;
         }
 
@@ -514,5 +525,28 @@ void SettingsManager::setHistoryLimit(int limit) {
     if (historyLimit() != limit) {
         m_settings.setValue("history/limit", limit);
         emit historyLimitChanged(limit);
+    }
+}
+
+
+bool SettingsManager::silentModeEnabled() const {
+    return m_settings.value("behavior/silent_mode_enabled", Constants::DEFAULT_SILENT_MODE_ENABLED).toBool();
+}
+
+void SettingsManager::setSilentModeEnabled(bool enabled) {
+    if (silentModeEnabled() != enabled) {
+        m_settings.setValue("behavior/silent_mode_enabled", enabled);
+        emit silentModeEnabledChanged(enabled);
+    }
+}
+
+QString SettingsManager::silentModeNotificationType() const {
+    return m_settings.value("behavior/silent_mode_notification_type", Constants::DEFAULT_SILENT_MODE_NOTIFICATION_TYPE).toString();
+}
+
+void SettingsManager::setSilentModeNotificationType(const QString& type) {
+    if (silentModeNotificationType() != type) {
+        m_settings.setValue("behavior/silent_mode_notification_type", type);
+        emit silentModeNotificationTypeChanged(type);
     }
 }

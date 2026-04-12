@@ -3,6 +3,8 @@
 
 #include "servicemanager.h"
 #include "copyprocessor.h"
+#include "floatingball.h"
+
 #include <QObject>
 #include <QImage>
 
@@ -52,6 +54,7 @@ private slots:
 
     void onSingleInstanceMessageReceived(const QByteArray& message);
     void onManualProcessorTriggered(ContentType type);
+    void onSilentNotificationClicked();
 
 private:
     void setupManagers();
@@ -81,6 +84,10 @@ private:
 
     // 【新增】当前服务名称，用于传递给各组件
     QString m_currentServiceName;
+
+    void showSilentNotification(FloatingBall::State state, const QString& message = QString());
+
+    FloatingBall* m_floatingBall = nullptr;
 };
 
 #endif // APPCONTROLLER_H

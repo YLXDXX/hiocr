@@ -9,6 +9,8 @@
 #include "settingsdialog.h"
 #include "singleapplication.h"
 #include "historymanager.h"
+#include "floatingball.h"
+
 #include <QApplication>
 #include <QTimer>
 #include <QDebug>
@@ -24,6 +26,10 @@ AppController::AppController(QObject *parent) : QObject(parent) { /* ... */ }
 
 AppController::~AppController()
 {
+    if (m_floatingBall) {
+        delete m_floatingBall;
+        m_floatingBall = nullptr;
+    }
     if (m_mainWindow) {
         delete m_mainWindow;
         m_mainWindow = nullptr;
@@ -107,6 +113,7 @@ void AppController::setupManagers()
     m_serviceManager = new ServiceManager(this);
     m_copyProcessor = new CopyProcessor(this);
     HistoryManager::instance()->init();
+    m_floatingBall = new FloatingBall();
 }
 
 
@@ -192,15 +199,16 @@ void AppController::setupConnections()
     // 处理状态变化：识别开始时清空 UI
     connect(m_recognitionManager, &RecognitionManager::busyStateChanged, this, [this](bool busy){
         if (busy) {
-            // 识别开始，清空旧结果，准备接收新数据
             emit recognitionResultReady(QString());
-            // 开启流式模式
             m_mainWindow->setStreamingMode(true);
+
+            // 【新增】静默模式：显示"识别中"通知
+            if (m_settings->silentModeEnabled() && !m_mainWindow->isVisible()) {
+                showSilentNotification(FloatingBall::Recognizing, "正在识别...");
+            }
         } else {
-            // 识别结束，关闭流式模式
             m_mainWindow->setStreamingMode(false);
         }
-        // 【关键修正】转发信号，告诉 MainWindow 更新按钮状态
         emit busyStateChanged(busy);
     });
 
@@ -261,6 +269,11 @@ void AppController::setupConnections()
         if (m_settings->autoCopyResult() && !finalText.isEmpty()) {
             m_copyProcessor->processAndCopy(finalText, m_lastRecognizeType);
         }
+
+        // 【新增】静默模式：显示"识别完成"通知
+        if (m_settings->silentModeEnabled() && !m_mainWindow->isVisible()) {
+            showSilentNotification(FloatingBall::Success, "识别完成");
+        }
     });
 
     // 识别失败处理逻辑
@@ -271,6 +284,9 @@ void AppController::setupConnections()
         if (m_isRetryingAfterSwitch) {
             m_isRetryingAfterSwitch = false;
             emit recognitionFailed(error);
+            if (m_settings->silentModeEnabled() && !m_mainWindow->isVisible()) {
+                showSilentNotification(FloatingBall::Error, "识别错误: " + error);
+            }
             return;
         }
 
@@ -284,6 +300,9 @@ void AppController::setupConnections()
         error.contains("unreachable");
 
         if (!isNetworkError) {
+            if (m_settings->silentModeEnabled() && !m_mainWindow->isVisible()) {
+                showSilentNotification(FloatingBall::Error, "识别错误: " + error);
+            }
             emit recognitionFailed(error);
             return;
         }
@@ -336,6 +355,9 @@ void AppController::setupConnections()
             }
             m_serviceManager->startService(tryStartId, tryStartCommand);
         } else {
+            if (m_settings->silentModeEnabled() && !m_mainWindow->isVisible()) {
+                showSilentNotification(FloatingBall::Error, "识别错误: " + error);
+            }
             emit recognitionFailed(error);
         }
     });
@@ -392,6 +414,17 @@ void AppController::setupConnections()
     });
 
     connect(m_serviceManager, &ServiceManager::runningCountChanged, m_mainWindow, &MainWindow::updateStopAllAction);
+
+    // --- 静默模式通知交互 ---
+    connect(m_floatingBall, &FloatingBall::clicked, this, &AppController::onSilentNotificationClicked);
+    connect(m_trayManager, &TrayManager::notificationClicked, this, &AppController::onSilentNotificationClicked);
+
+    // 静默模式被关闭时，隐藏悬浮球
+    connect(m_settings, &SettingsManager::silentModeEnabledChanged, this, [this](bool enabled){
+        if (!enabled && m_floatingBall) {
+            m_floatingBall->setState(FloatingBall::Idle);
+        }
+    });
 
     // --- 9. CopyProcessor 状态反馈 ---
     connect(m_copyProcessor, &CopyProcessor::error, m_mainWindow, &MainWindow::showError);
@@ -550,6 +583,10 @@ void AppController::showWindow() {
         m_mainWindow->raise();
         m_mainWindow->activateWindow();
     }
+    // 【新增】手动打开主窗口时，隐藏悬浮球
+    if (m_floatingBall && m_floatingBall->currentState() != FloatingBall::Idle) {
+        m_floatingBall->setState(FloatingBall::Idle);
+    }
 }
 
 void AppController::quitApp() {
@@ -593,7 +630,10 @@ void AppController::onAreaSelected(const QRect& rect) {
     }
 
     QTimer::singleShot(0, this, [this](){
-        showWindow();
+        // 静默模式下不自动显示主窗口
+        if (!m_settings->silentModeEnabled()) {
+            showWindow();
+        }
     });
 }
 
@@ -638,3 +678,37 @@ void AppController::onManualProcessorTriggered(ContentType type)
     m_copyProcessor->manualProcess(currentText, type);
 }
 
+
+
+void AppController::showSilentNotification(FloatingBall::State state, const QString& message)
+{
+    if (!m_settings->silentModeEnabled()) return;
+
+    QString notificationType = m_settings->silentModeNotificationType();
+
+    if (notificationType == "floating_ball" && m_floatingBall) {
+        m_floatingBall->setState(state, message);
+    } else {
+        // 系统通知模式
+        QString title = "HiOCR";
+        switch (state) {
+            case FloatingBall::Recognizing:
+                m_trayManager->showMessage(title, "正在识别...");
+                break;
+            case FloatingBall::Success:
+                m_trayManager->showMessage(title, "识别完成");
+                break;
+            case FloatingBall::Error:
+                m_trayManager->showMessage(title, message.isEmpty() ? "识别错误" : message);
+                break;
+            default:
+                break;
+        }
+    }
+}
+
+void AppController::onSilentNotificationClicked()
+{
+    // 点击通知或悬浮球时，打开主窗口查看结果
+    showWindow();
+}

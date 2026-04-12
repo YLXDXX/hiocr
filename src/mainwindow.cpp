@@ -232,9 +232,14 @@ void MainWindow::setupConnections()
 
 void MainWindow::setImage(const QImage& image) { m_imageView->setImage(image); }
 void MainWindow::setRecognitionResult(const QString& markdown) { m_markdownSource->setPlainText(markdown); m_markdownRenderer->setMarkdown(markdown); }
-void MainWindow::showError(const QString& message) { QMessageBox::critical(this, "错误", message); }
 void MainWindow::setPrompt(const QString& prompt) { m_promptBar->setPrompt(prompt); }
 
+void MainWindow::showError(const QString& message)
+{
+    // 静默模式下窗口隐藏，不弹出错误对话框，错误由通知反馈
+    if (!isVisible()) return;
+    QMessageBox::critical(this, "错误", message);
+}
 
 void MainWindow::setBusy(bool busy)
 {

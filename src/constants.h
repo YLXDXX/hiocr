@@ -96,6 +96,11 @@ namespace Constants {
     // 历史记录设置
     const bool DEFAULT_SAVE_HISTORY = true;
     const int DEFAULT_HISTORY_LIMIT = 100;
+
+    // --- 静默模式设置 ---
+    const bool DEFAULT_SILENT_MODE_ENABLED = false;
+    const QString DEFAULT_SILENT_MODE_NOTIFICATION_TYPE = "system_notification";
+    // 可选值: "system_notification" (系统通知), "floating_ball" (悬浮小球)
 }
 
 #endif // CONSTANTS_H

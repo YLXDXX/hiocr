@@ -104,6 +104,9 @@ private:
 
     QCheckBox* m_saveHistoryCheck;
     QSpinBox* m_historyLimitSpin;
+
+    QCheckBox* m_silentModeCheck;
+    QComboBox* m_silentModeNotificationCombo;
 };
 
 #endif // SETTINGSDIALOG_H

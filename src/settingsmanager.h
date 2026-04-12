@@ -192,6 +192,13 @@ public:
     int historyLimit() const;
     void setHistoryLimit(int limit);
 
+    // 静默模式设置
+    bool silentModeEnabled() const;
+    void setSilentModeEnabled(bool enabled);
+
+    QString silentModeNotificationType() const;
+    void setSilentModeNotificationType(const QString& type);
+
 signals:
     void serviceProfilesChanged();
     void currentServiceIdChanged(const QString& id);
@@ -241,6 +248,9 @@ signals:
     void requestTimeoutChanged(int seconds);
     void saveHistoryEnabledChanged(bool enabled);
     void historyLimitChanged(int limit);
+
+    void silentModeEnabledChanged(bool enabled);
+    void silentModeNotificationTypeChanged(const QString& type);
 
 private:
     explicit SettingsManager(QObject* parent = nullptr);

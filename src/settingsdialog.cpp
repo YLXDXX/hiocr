@@ -191,6 +191,23 @@ void SettingsDialog::setupUi()
     m_autoExternalProcessCheck = new QCheckBox("复制前自动调用外部程序处理");
     behaviorLayout->addWidget(m_autoExternalProcessCheck);
 
+    // --- 静默模式设置 ---
+    QHBoxLayout* silentLayout = new QHBoxLayout();
+    m_silentModeCheck = new QCheckBox("启用静默模式");
+    silentLayout->addWidget(m_silentModeCheck);
+    silentLayout->addStretch();
+    silentLayout->addWidget(new QLabel("通知方式:"));
+    m_silentModeNotificationCombo = new QComboBox();
+    m_silentModeNotificationCombo->addItem("系统通知", "system_notification");
+    m_silentModeNotificationCombo->addItem("悬浮小球", "floating_ball");
+    silentLayout->addWidget(m_silentModeNotificationCombo);
+    behaviorLayout->addLayout(silentLayout);
+
+    // 静默模式复选框控制通知方式可用性
+    connect(m_silentModeCheck, &QCheckBox::toggled, this, [this](bool checked){
+        m_silentModeNotificationCombo->setEnabled(checked);
+    });
+
     // 【新增】历史记录设置区域
     QHBoxLayout* historyLayout = new QHBoxLayout();
     m_saveHistoryCheck = new QCheckBox("保存识别历史记录");
@@ -435,6 +452,11 @@ void SettingsDialog::loadSettings()
     m_saveHistoryCheck->setChecked(s->saveHistoryEnabled());
     m_historyLimitSpin->setValue(s->historyLimit());
     m_historyLimitSpin->setEnabled(s->saveHistoryEnabled());
+
+    m_silentModeCheck->setChecked(s->silentModeEnabled());
+    m_silentModeNotificationCombo->setCurrentIndex(
+        m_silentModeNotificationCombo->findData(s->silentModeNotificationType()));
+    m_silentModeNotificationCombo->setEnabled(s->silentModeEnabled());
 }
 
 void SettingsDialog::populateServiceList()
@@ -569,6 +591,9 @@ void SettingsDialog::onSaveClicked()
     s->setSaveHistoryEnabled(m_saveHistoryCheck->isChecked());
     s->setHistoryLimit(m_historyLimitSpin->value());
 
+    s->setSilentModeEnabled(m_silentModeCheck->isChecked());
+    s->setSilentModeNotificationType(m_silentModeNotificationCombo->currentData().toString());
+
     accept();
 }
 
@@ -597,6 +622,11 @@ void SettingsDialog::onRestoreDefaults()
     // 【新增】恢复历史设置
     m_saveHistoryCheck->setChecked(Constants::DEFAULT_SAVE_HISTORY);
     m_historyLimitSpin->setValue(Constants::DEFAULT_HISTORY_LIMIT);
+
+    m_silentModeCheck->setChecked(Constants::DEFAULT_SILENT_MODE_ENABLED);
+    m_silentModeNotificationCombo->setCurrentIndex(
+        m_silentModeNotificationCombo->findData(Constants::DEFAULT_SILENT_MODE_NOTIFICATION_TYPE));
+    m_silentModeNotificationCombo->setEnabled(Constants::DEFAULT_SILENT_MODE_ENABLED);
 
     // 【新增】恢复新变量默认值
     m_textProcessorEdit->clear();

@@ -29,6 +29,8 @@ TrayManager::TrayManager(QObject* parent) : QObject(parent)
 
     m_trayIcon->setContextMenu(m_trayMenu);
     connect(m_trayIcon, &QSystemTrayIcon::activated, this, &TrayManager::onActivated);
+    connect(m_trayIcon, &QSystemTrayIcon::messageClicked, this, &TrayManager::notificationClicked);
+
     m_trayIcon->show();
 }
 

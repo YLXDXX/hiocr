@@ -21,6 +21,7 @@ signals:
     void formulaRecognizeRequested();
     void tableRecognizeRequested();
     void quitRequested();
+    void notificationClicked();
 
 private slots:
     void onActivated(QSystemTrayIcon::ActivationReason reason);

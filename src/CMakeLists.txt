@@ -41,6 +41,7 @@ set(APP_SOURCES
     shortcutedit.cpp
     singleapplication.cpp
     historymanager.cpp
+    floatingball.cpp
 )
 
 set(APP_HEADERS
@@ -62,6 +63,7 @@ set(APP_HEADERS
     shortcutedit.h
     singleapplication.h
     historymanager.h
+    floatingball.h
 )
 
 # 如果 KF6GlobalAccel 可用，则添加 KGlobalAccel 支持
