@@ -86,3 +86,8 @@ if(HAVE_KF6)
     target_link_libraries(hiocr KF6::GlobalAccel)
     target_compile_definitions(hiocr PRIVATE HAVE_KF6)
 endif()
+
+if(HAVE_KF6_WINDOWSYSTEM)
+    target_link_libraries(hiocr KF6::WindowSystem)
+    target_compile_definitions(hiocr PRIVATE HAVE_KF6_WINDOWSYSTEM)
+endif()

@@ -17,6 +17,15 @@ else()
     message(STATUS "KF6GlobalAccel not found, will fallback to xdg-desktop-portal")
 endif()
 
+# 可选：查找 KF6WindowSystem（Wayland 下悬浮球置顶）
+find_package(KF6WindowSystem QUIET)
+if(KF6WindowSystem_FOUND)
+    set(HAVE_KF6_WINDOWSYSTEM TRUE)
+    message(STATUS "KF6WindowSystem found, floating ball will stay on top on Wayland")
+else()
+    message(STATUS "KF6WindowSystem not found, floating ball may not stay on top on Wayland")
+endif()
+
 add_subdirectory(src)
 
 install(TARGETS hiocr RUNTIME DESTINATION bin)

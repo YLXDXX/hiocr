@@ -8,11 +8,25 @@
 #include <QScreen>
 #include <QWindow>
 
+#ifdef HAVE_KF6_WINDOWSYSTEM
+#include <KWindowSystem>
+#include <KX11Extras>
+#include <netwm_def.h>
+#include <QDBusInterface>
+#include <QDBusReply>
+#include <QStandardPaths>
+#include <QFile>
+#include <QTextStream>
+#endif
+
 FloatingBall::FloatingBall(QWidget* parent)
 : QWidget(parent, Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::Tool | Qt::WindowDoesNotAcceptFocus)
 {
     setAttribute(Qt::WA_TranslucentBackground);
     setAttribute(Qt::WA_ShowWithoutActivating);
+
+    // 【新增】设置唯一窗口标题，用于 KWin 脚本在 Wayland 下识别此窗口
+    setWindowTitle("hiocr_floating_ball");
 
     SettingsManager* s = SettingsManager::instance();
     m_size = s->floatingBallSize();
@@ -140,9 +154,8 @@ void FloatingBall::showEvent(QShowEvent* event)
 {
     QWidget::showEvent(event);
     raise();
+    ensureKeepAbove();  // 【新增】确保置顶
 
-    // Wayland 下 hide() 后 show() 合成器会重置位置，
-    // 用延迟 move() 尝试恢复到追踪的位置
     if (m_needsPositionRestore && !m_trackedPos.isNull()) {
         QTimer::singleShot(50, this, [this](){
             move(m_trackedPos);
@@ -281,4 +294,83 @@ void FloatingBall::mouseReleaseEvent(QMouseEvent* event)
         }
     }
     m_dragging = false;
+}
+
+void FloatingBall::ensureKeepAbove()
+{
+    #ifdef HAVE_KF6_WINDOWSYSTEM
+    WId wid = this->winId();
+    if (!wid) return;
+
+    if (KWindowSystem::isPlatformX11()) {
+        // X11: 使用 KX11Extras（KF6 将 X11 专用方法迁移到了这里）
+        KX11Extras::setState(wid, NET::KeepAbove);
+    } else {
+        // Wayland: 没有公共 C++ API，必须通过 KWin D-Bus 脚本实现
+        requestKeepAboveViaKWin();
+    }
+    #endif
+}
+
+void FloatingBall::requestKeepAboveViaKWin()
+{
+    #ifdef HAVE_KF6_WINDOWSYSTEM
+    if (KWindowSystem::isPlatformX11()) return;
+
+    // 编写 KWin JavaScript 脚本，通过窗口标题匹配并设置 keepAbove
+    QString tempDir = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
+    QString scriptPath = tempDir + "/hiocr_keepabove.js";
+
+    QString scriptContent =
+    "var clients = workspace.windowList();\n"
+    "for (var i = 0; i < clients.length; i++) {\n"
+    "    if (clients[i].caption === 'hiocr_floating_ball') {\n"
+    "        clients[i].keepAbove = true;\n"
+    "        break;\n"
+    "    }\n"
+    "}\n";
+
+    // 写入临时脚本文件
+    QFile file(scriptPath);
+    if (file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
+        QTextStream stream(&file);
+        stream << scriptContent;
+        file.close();
+    }
+
+    // 通过 D-Bus 调用 KWin 脚本引擎
+    QDBusInterface scripting(
+        "org.kde.KWin",
+        "/Scripting",
+        "org.kde.kwin.Scripting",
+        QDBusConnection::sessionBus()
+    );
+
+    if (!scripting.isValid()) {
+        QFile::remove(scriptPath);
+        return;
+    }
+
+    // 首次或 ID 失效后加载脚本
+    if (m_kwinScriptId < 0) {
+        QDBusReply<int> reply = scripting.call("loadScript", scriptPath, "hiocr_keepabove");
+        if (reply.isValid()) {
+            m_kwinScriptId = reply.value();
+        }
+    }
+
+    // 执行脚本
+    if (m_kwinScriptId >= 0) {
+        QDBusMessage replyMsg = scripting.call("start", m_kwinScriptId);
+        if (replyMsg.type() == QDBusMessage::ErrorMessage) {
+            // 脚本 ID 不再有效（例如 KWin 重启），标记为失效，下次重新加载
+            m_kwinScriptId = -1;
+        }
+    }
+
+    // 延迟清理临时文件（KWin 加载脚本后不再需要该文件）
+    QTimer::singleShot(5000, this, [scriptPath]() {
+        QFile::remove(scriptPath);
+    });
+    #endif
 }

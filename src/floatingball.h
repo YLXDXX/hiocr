@@ -40,6 +40,9 @@ private slots:
     void onAnimationTick();
 
 private:
+    void ensureKeepAbove();          // 【新增】确保窗口置顶（Wayland 兼容）
+    void requestKeepAboveViaKWin();  // 【新增】通过 KWin D-Bus 脚本设置置顶
+
     State m_state = Idle;
     QString m_message;
     QTimer* m_autoHideTimer = nullptr;
@@ -51,16 +54,19 @@ private:
     int m_autoHideTime = 5000;
     bool m_alwaysVisible = false;
 
-    // 位置追踪（Wayland 下 pos() 不可靠，需手动维护）
-    QPoint m_trackedPos;                // 当前追踪到的屏幕坐标
+    // 位置追踪
+    QPoint m_trackedPos;
     bool m_needsPositionRestore = false;
 
     // 拖动追踪
-    QPoint m_dragStartCursorPos;        // 拖动开始时的光标屏幕坐标
-    QPoint m_dragStartBallPos;          // 拖动开始时的球位置
+    QPoint m_dragStartCursorPos;
+    QPoint m_dragStartBallPos;
 
-    // 拖动起点（用于判断拖动阈值）
+    // 拖动起点
     QPoint m_rightPressStartPos;
+
+    // 【新增】KWin 脚本 ID，避免重复加载
+    int m_kwinScriptId = -1;
 };
 
 #endif // FLOATINGBALL_H
