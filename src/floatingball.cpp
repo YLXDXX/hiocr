@@ -17,7 +17,9 @@
 #include <QStandardPaths>
 #include <QFile>
 #include <QTextStream>
+#include <QUuid>
 #endif
+
 
 FloatingBall::FloatingBall(QWidget* parent)
 : QWidget(parent, Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::Tool | Qt::WindowDoesNotAcceptFocus)
@@ -307,70 +309,48 @@ void FloatingBall::ensureKeepAbove()
         KX11Extras::setState(wid, NET::KeepAbove);
     } else {
         // Wayland: 没有公共 C++ API，必须通过 KWin D-Bus 脚本实现
-        requestKeepAboveViaKWin();
+        QTimer::singleShot(100, this, &FloatingBall::requestKeepAboveViaKWin); //迟调用，才能成功捕获到正确的窗口
     }
     #endif
 }
 
-void FloatingBall::requestKeepAboveViaKWin()
-{
+void FloatingBall::requestKeepAboveViaKWin() {
     #ifdef HAVE_KF6_WINDOWSYSTEM
     if (KWindowSystem::isPlatformX11()) return;
 
-    // 编写 KWin JavaScript 脚本，通过窗口标题匹配并设置 keepAbove
-    QString tempDir = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
-    QString scriptPath = tempDir + "/hiocr_keepabove.js";
+    QString uniqueId = QUuid::createUuid().toString(QUuid::WithoutBraces).left(8);
+    QString scriptName = "hiocr_keepabove_service_" + uniqueId;
+    QString tempPath = QStandardPaths::writableLocation(QStandardPaths::TempLocation) + "/" + scriptName + ".js";
 
-    QString scriptContent =
-    "var clients = workspace.windowList();\n"
-    "for (var i = 0; i < clients.length; i++) {\n"
-    "    if (clients[i].caption === 'hiocr_floating_ball') {\n"
-    "        clients[i].keepAbove = true;\n"
-    "        break;\n"
-    "    }\n"
-    "}\n";
+    // 纯执行逻辑，不带重试
+    QString scriptCode =
+    "var windows = workspace.windowList();"
+    "for (var i = 0; i < windows.length; i++) {"
+    "    if (windows[i].caption === 'hiocr_floating_ball' && windows[i].resourceClass === 'hiocr') {"
+    "        windows[i].keepAbove = true;"
+    "        print('HIOCR_TEST: Found and set KeepAbove: '+windows[i].caption+'  '+windows[i].resourceClass);"
+    "        break;"
+    "    }"
+    "}";
 
-    // 写入临时脚本文件
-    QFile file(scriptPath);
-    if (file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
-        QTextStream stream(&file);
-        stream << scriptContent;
+    QFile file(tempPath);
+    if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        file.write(scriptCode.toUtf8());
         file.close();
     }
 
-    // 通过 D-Bus 调用 KWin 脚本引擎
-    QDBusInterface scripting(
-        "org.kde.KWin",
-        "/Scripting",
-        "org.kde.kwin.Scripting",
-        QDBusConnection::sessionBus()
-    );
+    QDBusInterface scripting("org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting");
+    QDBusReply<int> reply = scripting.call("loadScript", tempPath, scriptName);
 
-    if (!scripting.isValid()) {
-        QFile::remove(scriptPath);
-        return;
-    }
-
-    // 首次或 ID 失效后加载脚本
-    if (m_kwinScriptId < 0) {
-        QDBusReply<int> reply = scripting.call("loadScript", scriptPath, "hiocr_keepabove");
-        if (reply.isValid()) {
-            m_kwinScriptId = reply.value();
-        }
-    }
-
-    // 执行脚本
-    if (m_kwinScriptId >= 0) {
-        QDBusMessage replyMsg = scripting.call("start", m_kwinScriptId);
-        if (replyMsg.type() == QDBusMessage::ErrorMessage) {
-            // 脚本 ID 不再有效（例如 KWin 重启），标记为失效，下次重新加载
-            m_kwinScriptId = -1;
-        }
+    if (reply.isValid() && reply.value() != -1) {
+        QDBusInterface instance("org.kde.KWin", "/Scripting/Script" + QString::number(reply.value()), "org.kde.kwin.Script");
+        instance.call("run");
     }
 
     // 延迟清理临时文件（KWin 加载脚本后不再需要该文件）
-    QTimer::singleShot(5000, this, [scriptPath]() {
-        QFile::remove(scriptPath);
+    QTimer::singleShot(5000, this, [tempPath]() {
+        QFile::remove(tempPath);
     });
     #endif
 }
+
