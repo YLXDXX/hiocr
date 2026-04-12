@@ -426,6 +426,15 @@ void AppController::setupConnections()
         }
     });
 
+    // --- 悬浮球交互 ---
+    connect(m_floatingBall, &FloatingBall::rightClicked, this, &AppController::onFloatingBallRightClicked);
+    connect(m_floatingBall, &FloatingBall::positionChanged, this, &AppController::onFloatingBallPositionChanged);
+
+    // 设置实时应用
+    connect(m_settings, &SettingsManager::floatingBallSizeChanged, this, &AppController::onFloatingBallSettingsChanged);
+    connect(m_settings, &SettingsManager::floatingBallAutoHideTimeChanged, this, &AppController::onFloatingBallSettingsChanged);
+    connect(m_settings, &SettingsManager::floatingBallAlwaysVisibleChanged, this, &AppController::onFloatingBallSettingsChanged);
+
     // --- 9. CopyProcessor 状态反馈 ---
     connect(m_copyProcessor, &CopyProcessor::error, m_mainWindow, &MainWindow::showError);
     connect(m_copyProcessor, &CopyProcessor::finished, this, [this](const QString& result){
@@ -711,4 +720,35 @@ void AppController::onSilentNotificationClicked()
 {
     // 点击通知或悬浮球时，打开主窗口查看结果
     showWindow();
+}
+
+
+void AppController::onFloatingBallRightClicked()
+{
+    // 右键点击悬浮球触发截图
+    takeScreenshot();
+}
+
+void AppController::onFloatingBallPositionChanged(const QPoint& pos)
+{
+    // Wayland 下客户端无法获取真实的屏幕绝对坐标，跳过保存，防止覆盖为错误坐标
+    if (QGuiApplication::platformName() == "wayland") {
+        return;
+    }
+    m_settings->setFloatingBallPosX(pos.x());
+    m_settings->setFloatingBallPosY(pos.y());
+}
+
+void AppController::onFloatingBallSettingsChanged()
+{
+    // 将设置实时应用到悬浮球
+    if (m_floatingBall) {
+        QPoint pos(m_settings->floatingBallPosX(), m_settings->floatingBallPosY());
+        m_floatingBall->applySettings(
+            m_settings->floatingBallSize(),
+                                      pos,
+                                      m_settings->floatingBallAutoHideTime(),
+                                      m_settings->floatingBallAlwaysVisible()
+        );
+    }
 }

@@ -101,6 +101,13 @@ namespace Constants {
     const bool DEFAULT_SILENT_MODE_ENABLED = false;
     const QString DEFAULT_SILENT_MODE_NOTIFICATION_TYPE = "system_notification";
     // 可选值: "system_notification" (系统通知), "floating_ball" (悬浮小球)
+
+    // --- 悬浮球设置 ---
+    const int DEFAULT_FLOATING_BALL_SIZE = 48;
+    const int DEFAULT_FLOATING_BALL_POS_X = -1; // -1表示未初始化，使用默认屏幕右下角
+    const int DEFAULT_FLOATING_BALL_POS_Y = -1;
+    const int DEFAULT_FLOATING_BALL_AUTO_HIDE_TIME = 5000; // 毫秒，0表示不自动隐藏
+    const bool DEFAULT_FLOATING_BALL_ALWAYS_VISIBLE = false;
 }
 
 #endif // CONSTANTS_H

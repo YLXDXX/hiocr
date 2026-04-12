@@ -35,6 +35,12 @@ void SettingsManager::initializeDefaults()
         m_settings.setValue("behavior/silent_mode_enabled", Constants::DEFAULT_SILENT_MODE_ENABLED);
         m_settings.setValue("behavior/silent_mode_notification_type", Constants::DEFAULT_SILENT_MODE_NOTIFICATION_TYPE);
 
+        m_settings.setValue("floating_ball/size", Constants::DEFAULT_FLOATING_BALL_SIZE);
+        m_settings.setValue("floating_ball/pos_x", Constants::DEFAULT_FLOATING_BALL_POS_X);
+        m_settings.setValue("floating_ball/pos_y", Constants::DEFAULT_FLOATING_BALL_POS_Y);
+        m_settings.setValue("floating_ball/auto_hide_time", Constants::DEFAULT_FLOATING_BALL_AUTO_HIDE_TIME);
+        m_settings.setValue("floating_ball/always_visible", Constants::DEFAULT_FLOATING_BALL_ALWAYS_VISIBLE);
+
         m_settings.setValue("shortcuts/screenshot", Constants::SHORTCUT_SCREENSHOT);
         m_settings.setValue("shortcuts/text_recognize", Constants::SHORTCUT_TEXT);
         m_settings.setValue("shortcuts/formula_recognize", Constants::SHORTCUT_FORMULA);
@@ -144,6 +150,27 @@ void SettingsManager::initializeDefaults()
         }
         if (!m_settings.contains("behavior/silent_mode_notification_type")) {
             m_settings.setValue("behavior/silent_mode_notification_type", Constants::DEFAULT_SILENT_MODE_NOTIFICATION_TYPE);
+            needsSync = true;
+        }
+
+        if (!m_settings.contains("floating_ball/size")) {
+            m_settings.setValue("floating_ball/size", Constants::DEFAULT_FLOATING_BALL_SIZE);
+            needsSync = true;
+        }
+        if (!m_settings.contains("floating_ball/pos_x")) {
+            m_settings.setValue("floating_ball/pos_x", Constants::DEFAULT_FLOATING_BALL_POS_X);
+            needsSync = true;
+        }
+        if (!m_settings.contains("floating_ball/pos_y")) {
+            m_settings.setValue("floating_ball/pos_y", Constants::DEFAULT_FLOATING_BALL_POS_Y);
+            needsSync = true;
+        }
+        if (!m_settings.contains("floating_ball/auto_hide_time")) {
+            m_settings.setValue("floating_ball/auto_hide_time", Constants::DEFAULT_FLOATING_BALL_AUTO_HIDE_TIME);
+            needsSync = true;
+        }
+        if (!m_settings.contains("floating_ball/always_visible")) {
+            m_settings.setValue("floating_ball/always_visible", Constants::DEFAULT_FLOATING_BALL_ALWAYS_VISIBLE);
             needsSync = true;
         }
 
@@ -548,5 +575,50 @@ void SettingsManager::setSilentModeNotificationType(const QString& type) {
     if (silentModeNotificationType() != type) {
         m_settings.setValue("behavior/silent_mode_notification_type", type);
         emit silentModeNotificationTypeChanged(type);
+    }
+}
+
+
+int SettingsManager::floatingBallSize() const {
+    return m_settings.value("floating_ball/size", Constants::DEFAULT_FLOATING_BALL_SIZE).toInt();
+}
+void SettingsManager::setFloatingBallSize(int size) {
+    if (floatingBallSize() != size) {
+        m_settings.setValue("floating_ball/size", size);
+        emit floatingBallSizeChanged(size);
+    }
+}
+
+int SettingsManager::floatingBallPosX() const {
+    return m_settings.value("floating_ball/pos_x", Constants::DEFAULT_FLOATING_BALL_POS_X).toInt();
+}
+void SettingsManager::setFloatingBallPosX(int x) {
+    m_settings.setValue("floating_ball/pos_x", x);
+}
+
+int SettingsManager::floatingBallPosY() const {
+    return m_settings.value("floating_ball/pos_y", Constants::DEFAULT_FLOATING_BALL_POS_Y).toInt();
+}
+void SettingsManager::setFloatingBallPosY(int y) {
+    m_settings.setValue("floating_ball/pos_y", y);
+}
+
+int SettingsManager::floatingBallAutoHideTime() const {
+    return m_settings.value("floating_ball/auto_hide_time", Constants::DEFAULT_FLOATING_BALL_AUTO_HIDE_TIME).toInt();
+}
+void SettingsManager::setFloatingBallAutoHideTime(int time) {
+    if (floatingBallAutoHideTime() != time) {
+        m_settings.setValue("floating_ball/auto_hide_time", time);
+        emit floatingBallAutoHideTimeChanged(time);
+    }
+}
+
+bool SettingsManager::floatingBallAlwaysVisible() const {
+    return m_settings.value("floating_ball/always_visible", Constants::DEFAULT_FLOATING_BALL_ALWAYS_VISIBLE).toBool();
+}
+void SettingsManager::setFloatingBallAlwaysVisible(bool visible) {
+    if (floatingBallAlwaysVisible() != visible) {
+        m_settings.setValue("floating_ball/always_visible", visible);
+        emit floatingBallAlwaysVisibleChanged(visible);
     }
 }

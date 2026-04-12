@@ -107,6 +107,10 @@ private:
 
     QCheckBox* m_silentModeCheck;
     QComboBox* m_silentModeNotificationCombo;
+
+    QSpinBox* m_floatingBallSizeSpin;
+    QSpinBox* m_floatingBallAutoHideTimeSpin;
+    QCheckBox* m_floatingBallAlwaysVisibleCheck;
 };
 
 #endif // SETTINGSDIALOG_H

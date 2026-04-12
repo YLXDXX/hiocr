@@ -21,11 +21,16 @@ public:
     void setState(State state, const QString& message = QString());
     State currentState() const;
 
+    void applySettings(int size, const QPoint& pos, int autoHideTime, bool alwaysVisible);
+
 signals:
     void clicked();
+    void rightClicked();
+    void positionChanged(const QPoint& pos);
 
 protected:
     void paintEvent(QPaintEvent* event) override;
+    void showEvent(QShowEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;
@@ -42,6 +47,10 @@ private:
     QPoint m_dragStartPos;
     bool m_dragging = false;
     int m_animationAngle = 0;
+
+    int m_size = 48;
+    int m_autoHideTime = 5000;
+    bool m_alwaysVisible = false;
 };
 
 #endif // FLOATINGBALL_H

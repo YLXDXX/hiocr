@@ -208,6 +208,27 @@ void SettingsDialog::setupUi()
         m_silentModeNotificationCombo->setEnabled(checked);
     });
 
+    // --- 悬浮球设置 ---
+    QGroupBox* floatingBallGroup = new QGroupBox("悬浮球设置");
+    QFormLayout* fbLayout = new QFormLayout(floatingBallGroup);
+
+    m_floatingBallSizeSpin = new QSpinBox();
+    m_floatingBallSizeSpin->setRange(32, 128);
+    m_floatingBallSizeSpin->setSuffix(" px");
+    fbLayout->addRow("悬浮球大小:", m_floatingBallSizeSpin);
+
+    m_floatingBallAutoHideTimeSpin = new QSpinBox();
+    m_floatingBallAutoHideTimeSpin->setRange(0, 60000);
+    m_floatingBallAutoHideTimeSpin->setSingleStep(1000);
+    m_floatingBallAutoHideTimeSpin->setSuffix(" ms");
+    m_floatingBallAutoHideTimeSpin->setSpecialValueText("不自动隐藏 (0)");
+    fbLayout->addRow("完成/错误后显示时间:", m_floatingBallAutoHideTimeSpin);
+
+    m_floatingBallAlwaysVisibleCheck = new QCheckBox("始终显示悬浮球 (右键点击截图, 左键拖动)");
+    fbLayout->addRow(m_floatingBallAlwaysVisibleCheck);
+
+    behaviorLayout->addWidget(floatingBallGroup);
+
     // 【新增】历史记录设置区域
     QHBoxLayout* historyLayout = new QHBoxLayout();
     m_saveHistoryCheck = new QCheckBox("保存识别历史记录");
@@ -457,6 +478,10 @@ void SettingsDialog::loadSettings()
     m_silentModeNotificationCombo->setCurrentIndex(
         m_silentModeNotificationCombo->findData(s->silentModeNotificationType()));
     m_silentModeNotificationCombo->setEnabled(s->silentModeEnabled());
+
+    m_floatingBallSizeSpin->setValue(s->floatingBallSize());
+    m_floatingBallAutoHideTimeSpin->setValue(s->floatingBallAutoHideTime());
+    m_floatingBallAlwaysVisibleCheck->setChecked(s->floatingBallAlwaysVisible());
 }
 
 void SettingsDialog::populateServiceList()
@@ -594,6 +619,10 @@ void SettingsDialog::onSaveClicked()
     s->setSilentModeEnabled(m_silentModeCheck->isChecked());
     s->setSilentModeNotificationType(m_silentModeNotificationCombo->currentData().toString());
 
+    s->setFloatingBallSize(m_floatingBallSizeSpin->value());
+    s->setFloatingBallAutoHideTime(m_floatingBallAutoHideTimeSpin->value());
+    s->setFloatingBallAlwaysVisible(m_floatingBallAlwaysVisibleCheck->isChecked());
+
     accept();
 }
 
@@ -642,4 +671,8 @@ void SettingsDialog::onRestoreDefaults()
     m_pureMathProcessorScEdit->clear();
 
     m_autoStartServiceCheck->setChecked(Constants::DEFAULT_AUTO_START_SERVICE);
+
+    m_floatingBallSizeSpin->setValue(Constants::DEFAULT_FLOATING_BALL_SIZE);
+    m_floatingBallAutoHideTimeSpin->setValue(Constants::DEFAULT_FLOATING_BALL_AUTO_HIDE_TIME);
+    m_floatingBallAlwaysVisibleCheck->setChecked(Constants::DEFAULT_FLOATING_BALL_ALWAYS_VISIBLE);
 }

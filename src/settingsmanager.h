@@ -199,6 +199,22 @@ public:
     QString silentModeNotificationType() const;
     void setSilentModeNotificationType(const QString& type);
 
+    // 悬浮球设置
+    int floatingBallSize() const;
+    void setFloatingBallSize(int size);
+
+    int floatingBallPosX() const;
+    void setFloatingBallPosX(int x);
+
+    int floatingBallPosY() const;
+    void setFloatingBallPosY(int y);
+
+    int floatingBallAutoHideTime() const;
+    void setFloatingBallAutoHideTime(int time);
+
+    bool floatingBallAlwaysVisible() const;
+    void setFloatingBallAlwaysVisible(bool visible);
+
 signals:
     void serviceProfilesChanged();
     void currentServiceIdChanged(const QString& id);
@@ -251,6 +267,10 @@ signals:
 
     void silentModeEnabledChanged(bool enabled);
     void silentModeNotificationTypeChanged(const QString& type);
+
+    void floatingBallSizeChanged(int size);
+    void floatingBallAutoHideTimeChanged(int time);
+    void floatingBallAlwaysVisibleChanged(bool visible);
 
 private:
     explicit SettingsManager(QObject* parent = nullptr);
