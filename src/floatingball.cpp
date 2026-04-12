@@ -9,9 +9,6 @@
 #include <QWindow>
 
 FloatingBall::FloatingBall(QWidget* parent)
-// 使用 Qt::Tool 替代 Qt::Dialog，作为不占任务栏的辅助窗口
-// 在 Wayland 下，无论是 Tool 还是 Dialog 都无法绕过合成器强制全局置顶
-// 这是 Wayland 的安全策略
 : QWidget(parent, Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::Tool | Qt::WindowDoesNotAcceptFocus)
 {
     setAttribute(Qt::WA_TranslucentBackground);
@@ -23,20 +20,24 @@ FloatingBall::FloatingBall(QWidget* parent)
     m_alwaysVisible = s->floatingBallAlwaysVisible();
     setFixedSize(m_size, m_size);
 
-    bool isWayland = QGuiApplication::platformName() == "wayland";
-    if (!isWayland) {
-        int posX = s->floatingBallPosX();
-        int posY = s->floatingBallPosY();
-        if (posX == -1 || posY == -1) {
-            QScreen* screen = QGuiApplication::primaryScreen();
-            if (screen) {
-                QRect geo = screen->availableGeometry();
-                posX = geo.right() - m_size - 20;
-                posY = geo.bottom() - m_size - 20;
-            }
+    // 从设置读取位置
+    int posX = s->floatingBallPosX();
+    int posY = s->floatingBallPosY();
+    if (posX < 0 || posY < 0) {
+        QScreen* screen = QGuiApplication::primaryScreen();
+        if (screen) {
+            QRect geo = screen->availableGeometry();
+            posX = geo.right() - m_size - 20;
+            posY = geo.bottom() - m_size - 20;
         }
-        move(posX, posY);
     }
+
+    // 初始化追踪位置
+    m_trackedPos = QPoint(posX, posY);
+
+    // 所有平台都调用 move()，Wayland 下可能被合成器忽略，
+    // 但 Qt 会在首次 show() 时将此位置作为初始映射位置发送给合成器
+    move(posX, posY);
 
     m_autoHideTimer = new QTimer(this);
     m_autoHideTimer->setSingleShot(true);
@@ -63,8 +64,8 @@ void FloatingBall::applySettings(int size, const QPoint& pos, int autoHideTime, 
         update();
     }
 
-    bool isWayland = QGuiApplication::platformName() == "wayland";
-    if (!isWayland && !pos.isNull()) {
+    if (!pos.isNull() && pos.x() >= 0 && pos.y() >= 0) {
+        m_trackedPos = pos;
         move(pos);
     }
 
@@ -135,24 +136,17 @@ void FloatingBall::onAnimationTick()
     update();
 }
 
-void FloatingBall::savePosition()
-{
-    m_savedPos = pos();
-    m_needsPositionRestore = true;
-}
-
 void FloatingBall::showEvent(QShowEvent* event)
 {
     QWidget::showEvent(event);
     raise();
 
-    // 【新增】如果位置在隐藏前被保存过（如截图前），则恢复到原位置
-    // 这解决了某些窗口管理器在 show() 时将 Qt::Tool 窗口重置到屏幕中央的问题
-    if (m_needsPositionRestore) {
-        bool isWayland = QGuiApplication::platformName() == "wayland";
-        if (!isWayland && !m_savedPos.isNull()) {
-            move(m_savedPos);
-        }
+    // Wayland 下 hide() 后 show() 合成器会重置位置，
+    // 用延迟 move() 尝试恢复到追踪的位置
+    if (m_needsPositionRestore && !m_trackedPos.isNull()) {
+        QTimer::singleShot(50, this, [this](){
+            move(m_trackedPos);
+        });
         m_needsPositionRestore = false;
     }
 }
@@ -239,22 +233,28 @@ void FloatingBall::paintEvent(QPaintEvent* event)
 
 void FloatingBall::mousePressEvent(QMouseEvent* event)
 {
-    // 右键按住准备拖动
     if (event->button() == Qt::RightButton) {
-        m_dragStartPos = event->globalPosition().toPoint() - pos();
         m_dragging = false;
+        // 记录右键按下时的光标位置（用于判断拖动阈值）
+        m_rightPressStartPos = event->globalPosition().toPoint();
+        // 记录拖动起始数据（如果后续触发拖动，这些值会被使用）
+        m_dragStartCursorPos = event->globalPosition().toPoint();
+        m_dragStartBallPos = m_trackedPos;
     }
 }
 
 void FloatingBall::mouseMoveEvent(QMouseEvent* event)
 {
-    // 右键按住移动时执行拖动
     if (event->buttons() & Qt::RightButton) {
-        QPoint currentPos = event->globalPosition().toPoint();
-        QPoint diff = currentPos - pos() - m_dragStartPos;
+        QPoint currentGlobalPos = event->globalPosition().toPoint();
+        QPoint diff = currentGlobalPos - m_rightPressStartPos;
 
         if (!m_dragging && diff.manhattanLength() > 5) {
             m_dragging = true;
+            // 更新拖动起始数据为实际开始拖动时的状态
+            m_dragStartCursorPos = currentGlobalPos;
+            m_dragStartBallPos = m_trackedPos;
+
             QWindow* wnd = windowHandle();
             if (wnd) {
                 wnd->startSystemMove();
@@ -266,17 +266,17 @@ void FloatingBall::mouseMoveEvent(QMouseEvent* event)
 void FloatingBall::mouseReleaseEvent(QMouseEvent* event)
 {
     if (event->button() == Qt::LeftButton) {
-        // 左键点击：触发截图
         emit screenshotTriggered();
     } else if (event->button() == Qt::RightButton) {
         if (m_dragging) {
-            // 右键拖动结束：保存位置
-            bool isWayland = QGuiApplication::platformName() == "wayland";
-            if (!isWayland) {
-                emit positionChanged(pos());
-            }
+            // 【关键修复】Wayland 下 pos() 不可靠，通过光标位移计算新位置
+            // startSystemMove() 由合成器处理，光标的屏幕位移 = 窗口的屏幕位移
+            QPoint currentCursorPos = QCursor::pos();
+            QPoint cursorDelta = currentCursorPos - m_dragStartCursorPos;
+            m_trackedPos = m_dragStartBallPos + cursorDelta;
+
+            emit positionChanged(m_trackedPos);
         } else {
-            // 右键点击（未拖动）：显示主窗口
             emit showWindowTriggered();
         }
     }

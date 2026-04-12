@@ -113,7 +113,11 @@ void AppController::setupManagers()
     m_serviceManager = new ServiceManager(this);
     m_copyProcessor = new CopyProcessor(this);
     HistoryManager::instance()->init();
-    m_floatingBall = new FloatingBall();
+
+    // 【关键】传入 m_mainWindow 作为 parent
+    // KDE Wayland 下，Qt::Tool 窗口有 transient parent 时，
+    // KWin 才会允许 move() 生效，位置恢复才能工作
+    m_floatingBall = new FloatingBall(m_mainWindow);
 }
 
 
@@ -425,7 +429,6 @@ void AppController::setupConnections()
     // --- 悬浮球交互 ---
     connect(m_floatingBall, &FloatingBall::screenshotTriggered, this, &AppController::takeScreenshot);
     connect(m_floatingBall, &FloatingBall::showWindowTriggered, this, &AppController::onSilentNotificationClicked);
-    // 连接位置变更信号，保存用户拖动后的位置到设置
     connect(m_floatingBall, &FloatingBall::positionChanged, this, &AppController::onFloatingBallPositionChanged);
 
     // 设置实时应用
@@ -544,9 +547,8 @@ void AppController::applyServiceConfig(const QString& serviceId)
 void AppController::takeScreenshot() {
     m_pendingPromptOverride = "";
 
-    // 【修改】隐藏前保存位置，以便截图完成后恢复
     if (m_floatingBall) {
-        m_floatingBall->savePosition();
+        // 截图前隐藏，showEvent 中会尝试恢复位置
         m_floatingBall->hide();
     }
 
@@ -563,9 +565,7 @@ void AppController::takeTextRecognizeScreenshot() {
     m_pendingPromptOverride = prompt;
     m_mainWindow->setPrompt(prompt);
 
-    // 【修改】隐藏前保存位置
     if (m_floatingBall) {
-        m_floatingBall->savePosition();
         m_floatingBall->hide();
     }
 
@@ -582,9 +582,7 @@ void AppController::takeFormulaRecognizeScreenshot() {
     m_pendingPromptOverride = prompt;
     m_mainWindow->setPrompt(prompt);
 
-    // 【修改】隐藏前保存位置
     if (m_floatingBall) {
-        m_floatingBall->savePosition();
         m_floatingBall->hide();
     }
 
@@ -601,9 +599,7 @@ void AppController::takeTableRecognizeScreenshot() {
     m_pendingPromptOverride = prompt;
     m_mainWindow->setPrompt(prompt);
 
-    // 【修改】隐藏前保存位置
     if (m_floatingBall) {
-        m_floatingBall->savePosition();
         m_floatingBall->hide();
     }
 
@@ -645,7 +641,6 @@ void AppController::onScreenshotFailed(const QString& error) {
 
 void AppController::onAreaSelected(const QRect& rect) {
     if (m_pendingFullScreenshot.isNull()) {
-        // 恢复悬浮球显示
         if (m_floatingBall && m_settings->floatingBallAlwaysVisible()) {
             m_floatingBall->setState(FloatingBall::Idle);
         }
@@ -654,7 +649,6 @@ void AppController::onAreaSelected(const QRect& rect) {
 
     if (rect.isNull() || rect.isEmpty()) {
         m_pendingFullScreenshot = QImage();
-        // 用户取消了截图（按了ESC），恢复悬浮球显示
         if (m_floatingBall && m_settings->floatingBallAlwaysVisible()) {
             m_floatingBall->setState(FloatingBall::Idle);
         }
@@ -673,10 +667,8 @@ void AppController::onAreaSelected(const QRect& rect) {
             m_pendingPromptOverride.clear();
         }
         m_recognitionManager->onImageChanged(base64);
-        // 注意：这里不需要手动 show 悬浮球，因为识别开始后，busyStateChanged 逻辑会自动将其设置为 "识别中" 并显示
     } else {
         emit recognitionResultReady(QString());
-        // 如果不自动识别，恢复悬浮球显示
         if (m_floatingBall && m_settings->floatingBallAlwaysVisible()) {
             m_floatingBall->setState(FloatingBall::Idle);
         }
@@ -767,10 +759,7 @@ void AppController::onSilentNotificationClicked()
 
 void AppController::onFloatingBallPositionChanged(const QPoint& pos)
 {
-    // Wayland 下客户端无法获取真实的屏幕绝对坐标，跳过保存，防止覆盖为错误坐标
-    if (QGuiApplication::platformName() == "wayland") {
-        return;
-    }
+    // 所有平台都保存位置（悬浮球现在通过光标位移追踪，Wayland 下也能得到正确坐标）
     m_settings->setFloatingBallPosX(pos.x());
     m_settings->setFloatingBallPosY(pos.y());
 }
