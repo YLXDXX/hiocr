@@ -23,7 +23,7 @@
 - CMake ≥ 3.20
 - C++17 编译器（GCC 或 Clang）
 - Qt6 组件：Core、Gui、Widgets、Network、WebEngineWidgets、WebChannel、DBus、Sql
-- 可选：KF6GlobalAccel（KDE 桌面下更好的全局快捷键支持）
+- 可选：KF6GlobalAccel（KDE 桌面下更好的全局快捷键支持）、KF6WindowSystem （KDE 桌面下更好的悬浮球支持）
 
 ### 编译安装
 
