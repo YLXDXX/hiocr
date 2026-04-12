@@ -55,6 +55,9 @@ public:
     void setFormulaRecognizeShortcut(const QString& key);
     void setTableRecognizeShortcut(const QString& key);
 
+    QString abortShortcut() const;
+    void setAbortShortcut(const QString& key);
+
     // 行为设置
     bool autoUseLastPrompt() const;
     void setAutoUseLastPrompt(bool enabled);

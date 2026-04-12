@@ -149,6 +149,13 @@ void MainWindow::setupMenuBar()
         toolsMenu->addSeparator();
         m_copyImageAction = toolsMenu->addAction("复制当前图片", this, &MainWindow::onCopyCurrentImage);
         m_copyImageAction->setEnabled(false);
+
+        toolsMenu->addSeparator();                                    // 【新增】
+        m_abortAction = toolsMenu->addAction("强制中断识别", this, [this](){  // 【新增】
+            emit abortRequested();
+        });
+        m_abortAction->setToolTip("中止当前正在进行的识别请求");
+
         m_mainToolBar->addWidget(createMenuButton("工具", toolsMenu));
 
         // --- 识别服务菜单 ---

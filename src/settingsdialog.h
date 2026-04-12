@@ -35,13 +35,15 @@ private:
     void saveCurrentServiceToTemp(int row);
 
     QLineEdit* m_serverUrlEdit;
-    QLineEdit* m_globalApiKeyEdit;      // 【新增】
-    QLineEdit* m_globalModelNameEdit;   // 【新增】
+    QLineEdit* m_globalApiKeyEdit;
+    QLineEdit* m_globalModelNameEdit;
 
     ShortcutEdit* m_scScreenshotEdit;
     ShortcutEdit* m_scTextEdit;
     ShortcutEdit* m_scFormulaEdit;
     ShortcutEdit* m_scTableEdit;
+    ShortcutEdit* m_abortScEdit;
+    ShortcutEdit* m_scTableEd;
 
     // --- 新增：脚本配置控件 ---
     QLineEdit* m_textProcessorEdit;

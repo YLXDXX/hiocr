@@ -143,6 +143,8 @@ void AppController::setupConnections()
     connect(m_shortcutHandler, &ShortcutHandler::pureMathProcessorRequested, this, [this](){
         onManualProcessorTriggered(ContentType::PureMath);
     });
+    // 【新增】中断识别快捷键
+    connect(m_shortcutHandler, &ShortcutHandler::abortRequested, this, &AppController::abortRecognition);
 
     // --- 2. 托盘 -> 动作 ---
     connect(m_trayManager, &TrayManager::screenshotRequested, this, &AppController::takeScreenshot);
@@ -190,6 +192,9 @@ void AppController::setupConnections()
 
     // 处理来自 MainWindow 的手动脚本处理请求
     connect(m_mainWindow, &MainWindow::manualProcessRequested, this, &AppController::onManualProcessorTriggered);
+
+    // 【新增】中断识别菜单项
+    connect(m_mainWindow, &MainWindow::abortRequested, this, &AppController::abortRecognition);
 
     // --- 4. ScreenshotManager ---
     connect(m_screenshotManager, &ScreenshotManager::screenshotCaptured, this, &AppController::onScreenshotCaptured);
@@ -363,6 +368,26 @@ void AppController::setupConnections()
                 showSilentNotification(FloatingBall::Error, "识别错误: " + error);
             }
             emit recognitionFailed(error);
+        }
+    });
+
+    // 【新增】处理识别被用户主动中断
+    connect(m_recognitionManager, &RecognitionManager::recognitionAborted, this, [this](){
+        // 重置重试相关状态
+        m_isRetryingAfterSwitch = false;
+        m_retryAfterServiceStart = false;
+        m_pendingBase64.clear();
+        m_pendingPrompt.clear();
+
+        // 注意：setStreamingMode(false) 已经由 busyStateChanged(false) 的处理中调用
+        // 这里只需处理额外的清理工作
+
+        emit busyStateChanged(false);
+        m_mainWindow->statusBar()->showMessage("识别已被用户中断", 3000);
+
+        // 恢复悬浮球状态
+        if (m_floatingBall) {
+            m_floatingBall->setState(FloatingBall::Idle);
         }
     });
 
@@ -775,5 +800,12 @@ void AppController::onFloatingBallSettingsChanged()
                                       m_settings->floatingBallAutoHideTime(),
                                       m_settings->floatingBallAlwaysVisible()
         );
+    }
+}
+
+void AppController::abortRecognition()
+{
+    if (m_recognitionManager) {
+        m_recognitionManager->abortRecognition();
     }
 }

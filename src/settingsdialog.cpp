@@ -143,11 +143,13 @@ void SettingsDialog::setupUi()
     m_scTextEdit = new ShortcutEdit();
     m_scFormulaEdit = new ShortcutEdit();
     m_scTableEdit = new ShortcutEdit();
+    m_abortScEdit = new ShortcutEdit();
 
     shortcutLayout->addRow("截图:", m_scScreenshotEdit);
     shortcutLayout->addRow("文字识别:", m_scTextEdit);
     shortcutLayout->addRow("公式识别:", m_scFormulaEdit);
     shortcutLayout->addRow("表格识别:", m_scTableEdit);
+    shortcutLayout->addRow("强制中断识别:", m_abortScEdit);
     mainLayout->addWidget(shortcutGroup);
 
     // --- 显示设置 ---
@@ -440,6 +442,7 @@ void SettingsDialog::loadSettings()
     m_scTextEdit->setText(s->textRecognizeShortcut());
     m_scFormulaEdit->setText(s->formulaRecognizeShortcut());
     m_scTableEdit->setText(s->tableRecognizeShortcut());
+    m_abortScEdit->setText(s->abortShortcut());
 
     m_autoUseLastPromptCheck->setChecked(s->autoUseLastPrompt());
     m_displayMathCombo->setCurrentIndex(m_displayMathCombo->findData(s->displayMathEnvironment()));
@@ -584,6 +587,7 @@ void SettingsDialog::onSaveClicked()
     s->setTextRecognizeShortcut(m_scTextEdit->text());
     s->setFormulaRecognizeShortcut(m_scFormulaEdit->text());
     s->setTableRecognizeShortcut(m_scTableEdit->text());
+    s->setAbortShortcut(m_abortScEdit->text());
     s->setAutoUseLastPrompt(m_autoUseLastPromptCheck->isChecked());
     s->setDisplayMathEnvironment(m_displayMathCombo->currentData().toString());
     s->setMathFont(m_mathFontCombo->currentData().toString());
@@ -636,6 +640,7 @@ void SettingsDialog::onRestoreDefaults()
     m_scTextEdit->setText(Constants::SHORTCUT_TEXT);
     m_scFormulaEdit->setText(Constants::SHORTCUT_FORMULA);
     m_scTableEdit->setText(Constants::SHORTCUT_TABLE);
+    m_abortScEdit->setText(Constants::SHORTCUT_ABORT);
     m_autoUseLastPromptCheck->setChecked(true);
     m_autoRecognizeCheck->setChecked(Constants::DEFAULT_AUTO_RECOGNIZE_SCREENSHOT);
     m_autoCopyCheck->setChecked(Constants::DEFAULT_AUTO_COPY_RESULT);

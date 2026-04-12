@@ -87,6 +87,8 @@ namespace Constants {
     const QString SHORTCUT_TABLE_PROCESSOR = "";
     const QString SHORTCUT_PURE_MATH_PROCESSOR = "";
 
+    const QString SHORTCUT_ABORT = "Ctrl+.";
+
     // --- 脚本启用开关默认值 ---
     const bool DEFAULT_PROCESSOR_ENABLED = false;
 

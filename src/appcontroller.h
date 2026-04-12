@@ -33,6 +33,7 @@ public slots:
     void takeTextRecognizeScreenshot();
     void takeFormulaRecognizeScreenshot();
     void takeTableRecognizeScreenshot();
+    void abortRecognition();
     void showWindow();
     void quitApp();
 

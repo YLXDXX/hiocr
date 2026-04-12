@@ -29,11 +29,14 @@ public:
     QString currentBase64() const { return m_currentBase64; }
     void setCurrentBase64(const QString& base64) { m_currentBase64 = base64; }
 
+    void abortRecognition();
+
 signals:
     void recognitionFinished(const QString& markdown);
     void recognitionFailed(const QString& error);
     void busyStateChanged(bool busy);
     void streamDataReceived(const QString& delta);
+    void recognitionAborted();
 
 private slots:
     void onNetworkFinished(const QString& result, bool success, const QString& error);
@@ -50,6 +53,7 @@ private:
     QString m_serverUrl; // 【新增】用于缓存当前的 URL
     QString m_apiKey;      // 【新增】
     QString m_modelName;   // 【新增】
+    bool m_isAbortedByUser = false;
 };
 
 #endif // RECOGNITIONMANAGER_H

@@ -19,6 +19,7 @@ class NetworkManager : public QObject {
 public:
     explicit NetworkManager(QObject* parent = nullptr);
     void sendRequest(const RequestConfig& config);
+    void abortRequest();  // 【新增】强制中止当前请求
 
 signals:
     // 标准结束信号

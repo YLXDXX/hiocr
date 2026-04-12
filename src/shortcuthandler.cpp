@@ -40,6 +40,8 @@ void ShortcutHandler::setupLocalShortcuts()
     cleanup(m_scTableProcessor);
     cleanup(m_scPureMathProcessor);
 
+    cleanup(m_scAbort);
+
     SettingsManager* s = SettingsManager::instance();
 
     // 辅助函数：创建本地快捷键
@@ -61,6 +63,8 @@ void ShortcutHandler::setupLocalShortcuts()
     createLocal(s->formulaProcessorShortcut(), m_scFormulaProcessor, &ShortcutHandler::formulaProcessorRequested);
     createLocal(s->tableProcessorShortcut(), m_scTableProcessor, &ShortcutHandler::tableProcessorRequested);
     createLocal(s->pureMathProcessorShortcut(), m_scPureMathProcessor, &ShortcutHandler::pureMathProcessorRequested);
+
+    createLocal(s->abortShortcut(), m_scAbort, &ShortcutHandler::abortRequested);
 }
 
 void ShortcutHandler::setupGlobalShortcuts()

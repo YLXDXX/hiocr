@@ -45,6 +45,7 @@ void SettingsManager::initializeDefaults()
         m_settings.setValue("shortcuts/text_recognize", Constants::SHORTCUT_TEXT);
         m_settings.setValue("shortcuts/formula_recognize", Constants::SHORTCUT_FORMULA);
         m_settings.setValue("shortcuts/table_recognize", Constants::SHORTCUT_TABLE);
+        m_settings.setValue("shortcuts/abort", Constants::SHORTCUT_ABORT);
         m_settings.setValue("shortcuts/external_process", Constants::SHORTCUT_EXTERNAL_PROCESS);
         m_settings.setValue("behavior/auto_use_last_prompt", true);
         m_settings.setValue("display_math_env", Constants::DEFAULT_DISPLAY_MATH_ENV);
@@ -171,6 +172,10 @@ void SettingsManager::initializeDefaults()
         }
         if (!m_settings.contains("floating_ball/always_visible")) {
             m_settings.setValue("floating_ball/always_visible", Constants::DEFAULT_FLOATING_BALL_ALWAYS_VISIBLE);
+            needsSync = true;
+        }
+        if (!m_settings.contains("shortcuts/abort")) {
+            m_settings.setValue("shortcuts/abort", Constants::SHORTCUT_ABORT);
             needsSync = true;
         }
 
@@ -620,5 +625,16 @@ void SettingsManager::setFloatingBallAlwaysVisible(bool visible) {
     if (floatingBallAlwaysVisible() != visible) {
         m_settings.setValue("floating_ball/always_visible", visible);
         emit floatingBallAlwaysVisibleChanged(visible);
+    }
+}
+
+QString SettingsManager::abortShortcut() const {
+    return m_settings.value("shortcuts/abort", Constants::SHORTCUT_ABORT).toString();
+}
+
+void SettingsManager::setAbortShortcut(const QString& key) {
+    if (abortShortcut() != key) {
+        m_settings.setValue("shortcuts/abort", key);
+        emit shortcutsChanged();
     }
 }

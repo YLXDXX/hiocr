@@ -18,6 +18,8 @@ RecognitionManager::RecognitionManager(QObject* parent) : QObject(parent)
 void RecognitionManager::recognize(const QString& prompt, const QString& base64Image) {
     if (base64Image.isEmpty()) return;
 
+    m_isAbortedByUser = false;  // 【新增】每次新请求重置中断标志
+
     m_lastPrompt = prompt;
     m_isBusy = true;
     emit busyStateChanged(true);
@@ -26,10 +28,17 @@ void RecognitionManager::recognize(const QString& prompt, const QString& base64I
     config.base64Image = base64Image;
     config.prompt = prompt;
     config.serverUrl = m_serverUrl;
-    config.apiKey = m_apiKey;         // 【新增】
-    config.model = m_modelName;       // 【新增】
+    config.apiKey = m_apiKey;
+    config.model = m_modelName;
 
     m_networkManager->sendRequest(config);
+}
+
+void RecognitionManager::abortRecognition()
+{
+    if (!m_isBusy) return;  // 不在识别中则忽略
+    m_isAbortedByUser = true;
+    m_networkManager->abortRequest();
 }
 
 void RecognitionManager::onImageChanged(const QString& base64Image) {
@@ -73,6 +82,13 @@ void RecognitionManager::onDebounceTimeout() {
 void RecognitionManager::onNetworkFinished(const QString& result, bool success, const QString& error) {
     m_isBusy = false;
     emit busyStateChanged(false);
+
+    // 【新增】用户主动中断，不触发失败重试逻辑
+    if (m_isAbortedByUser) {
+        m_isAbortedByUser = false;
+        emit recognitionAborted();
+        return;
+    }
 
     if (success) {
         emit recognitionFinished(result);

@@ -20,6 +20,8 @@ signals:
     void formulaRecognizeRequested();
     void tableRecognizeRequested();
 
+    void abortRequested();  // 【新增】强制中断识别
+
     // 新增：分类型外部处理快捷键
     void textProcessorRequested();
     void formulaProcessorRequested();
@@ -35,6 +37,8 @@ private:
     QShortcut* m_scText = nullptr;
     QShortcut* m_scFormula = nullptr;
     QShortcut* m_scTable = nullptr;
+
+    QShortcut* m_scAbort = nullptr;  // 【新增】中断识别快捷键
 
     // 新增：处理脚本快捷键
     QShortcut* m_scTextProcessor = nullptr;

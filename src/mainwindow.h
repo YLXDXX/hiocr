@@ -76,6 +76,8 @@ signals:
     void manualProcessRequested(ContentType type);
     void loadHistoryRecordRequested(int recordId);
 
+    void abortRequested();
+
 protected:
     void keyPressEvent(QKeyEvent *event) override;
     void closeEvent(QCloseEvent *event) override;
@@ -113,6 +115,7 @@ private:
     QCheckBox* m_scriptPureMathCheck = nullptr;
 
     bool m_isStreaming = false;
+    QAction* m_abortAction = nullptr;
 };
 
 #endif // MAINWINDOW_H

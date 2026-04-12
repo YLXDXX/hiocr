@@ -30,6 +30,7 @@ void NetworkManager::sendRequest(const RequestConfig& config)
 
     // 清空缓冲
     m_rawResponseData.clear();
+    m_streamBuffer.clear();  // 【新增】清空流式缓冲区
     m_isCurrentStream = false;
 
     QString url = config.serverUrl.isEmpty() ? SettingsManager::instance()->serverUrl() : config.serverUrl;
@@ -236,3 +237,15 @@ void NetworkManager::onReplyFinished()
 
     reply->deleteLater();
 }
+
+
+void NetworkManager::abortRequest()
+{
+    m_timeoutTimer->stop();
+    if (m_currentReply) {
+        m_currentReply->abort();
+    }
+    m_streamBuffer.clear();
+}
+
+
