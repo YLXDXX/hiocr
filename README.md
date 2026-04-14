@@ -28,7 +28,7 @@
 ### 编译安装
 
 ```bash
-git clone https://gitee.com/ylxdxx/hiocr
+git clone https://gitee.com/ylxdxx/hiocr.git
 cd hiocr
 mkdir build && cd build
 cmake ..
