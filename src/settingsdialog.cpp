@@ -598,7 +598,7 @@ void SettingsDialog::onSaveClicked()
     s->setRequestParameters(paramsText);
     s->setAutoExternalProcessBeforeCopy(m_autoExternalProcessCheck->isChecked());
 
-    // 【新增】保存分类型脚本配置
+    // 分类型脚本配置
     s->setTextProcessorCommand(m_textProcessorEdit->text());
     s->setTextProcessorShortcut(m_textProcessorScEdit->text());
 
@@ -616,7 +616,7 @@ void SettingsDialog::onSaveClicked()
 
     s->setAutoStartService(m_autoStartServiceCheck->isChecked());
 
-    // 【新增】保存历史设置
+    // 历史设置
     s->setSaveHistoryEnabled(m_saveHistoryCheck->isChecked());
     s->setHistoryLimit(m_historyLimitSpin->value());
 
@@ -626,6 +626,10 @@ void SettingsDialog::onSaveClicked()
     s->setFloatingBallSize(m_floatingBallSizeSpin->value());
     s->setFloatingBallAutoHideTime(m_floatingBallAutoHideTimeSpin->value());
     s->setFloatingBallAlwaysVisible(m_floatingBallAlwaysVisibleCheck->isChecked());
+
+    // 【修复】显式同步到磁盘，防止程序异常退出时设置丢失
+    // QSettings 的 setValue 只是写入内存缓存，直到析构才自动同步
+    s->sync();
 
     accept();
 }

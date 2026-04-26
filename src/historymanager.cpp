@@ -51,7 +51,8 @@ void HistoryManager::init()
 bool HistoryManager::ensureTableExists()
 {
     QSqlQuery query(m_db);
-    // image_hash 作为唯一键，确保同一图片内容只有一条记录
+    // 【修复】DEFAULT 时间戳使用 localtime，与 INSERT 语句保持一致
+    // 避免 UTC 与本地时间混用导致排序错误、清理时误删记录
     bool success = query.exec(
         "CREATE TABLE IF NOT EXISTS history ("
         "id INTEGER PRIMARY KEY AUTOINCREMENT, "
@@ -59,7 +60,7 @@ bool HistoryManager::ensureTableExists()
         "cached_image_path TEXT, "
         "result_text TEXT, "
         "recognition_type INTEGER, "
-        "timestamp DATETIME DEFAULT CURRENT_TIMESTAMP"
+        "timestamp DATETIME DEFAULT (datetime('now', 'localtime'))"
         ")"
     );
     if (!success) {
@@ -98,13 +99,16 @@ void HistoryManager::saveRecord(const QImage& image, const QString& result, Cont
 {
     if (image.isNull() || result.isEmpty()) return;
 
+    // 【修复】增加 saveHistoryEnabled 防御性检查
+    // 即使调用方已检查，HistoryManager 自身也应保证一致性
+    if (!SettingsManager::instance()->saveHistoryEnabled()) return;
+
     QString hash = hashImage(image);
     QString cachedPath = saveImageCache(image, hash);
 
     QSqlQuery query(m_db);
 
-    // 使用 INSERT OR REPLACE 语法 (UPSERT)
-    // 如果 image_hash 已存在，则替换整行数据（包括时间戳，达到更新效果）
+    // 时间戳统一使用 localtime，与建表 DEFAULT 一致
     query.prepare(
         "INSERT OR REPLACE INTO history (image_hash, cached_image_path, result_text, recognition_type, timestamp) "
         "VALUES (:hash, :path, :text, :type, datetime('now', 'localtime'))"
@@ -120,12 +124,16 @@ void HistoryManager::saveRecord(const QImage& image, const QString& result, Cont
         return;
     }
 
-    // 【新增】自动清理逻辑
+    // 自动清理逻辑
     int limit = SettingsManager::instance()->historyLimit();
+    // limit == 0 表示无限制，跳过清理
     if (limit > 0) {
         // 1. 获取当前总数
         QSqlQuery countQuery(m_db);
-        countQuery.exec("SELECT COUNT(*) FROM history");
+        if (!countQuery.exec("SELECT COUNT(*) FROM history")) {
+            qWarning() << "Failed to count history:" << countQuery.lastError().text();
+            return;
+        }
         if (countQuery.next() && countQuery.value(0).toInt() > limit) {
             // 2. 计算需要删除的数量
             int deleteCount = countQuery.value(0).toInt() - limit;
@@ -136,24 +144,41 @@ void HistoryManager::saveRecord(const QImage& image, const QString& result, Cont
             findOldQuery.addBindValue(deleteCount);
 
             if (findOldQuery.exec()) {
-                QStringList ids;
+                QList<int> ids;
                 QStringList paths;
                 while (findOldQuery.next()) {
-                    ids << QString::number(findOldQuery.value(0).toInt());
+                    ids << findOldQuery.value(0).toInt();
                     paths << findOldQuery.value(1).toString();
                 }
 
                 // 4. 删除数据库记录
                 if (!ids.isEmpty()) {
+                    // 【修复】使用参数化查询，防止 SQL 注入风险
                     QSqlQuery deleteQuery(m_db);
-                    deleteQuery.exec(QString("DELETE FROM history WHERE id IN (%1)").arg(ids.join(",")));
+                    QString placeholders;
+                    for (int i = 0; i < ids.size(); ++i) {
+                        if (i > 0) placeholders += ",";
+                        placeholders += QString(":id%1").arg(i);
+                    }
+                    deleteQuery.prepare(QString("DELETE FROM history WHERE id IN (%1)").arg(placeholders));
+                    for (int i = 0; i < ids.size(); ++i) {
+                        deleteQuery.bindValue(QString(":id%1").arg(i), ids[i]);
+                    }
 
-                    // 5. 删除图片文件
+                    if (!deleteQuery.exec()) {
+                        qWarning() << "Failed to delete old history records:" << deleteQuery.lastError().text();
+                    }
+
+                    // 5. 删除关联的图片文件
                     for (const QString& path : paths) {
-                        QFile::remove(path);
+                        if (!path.isEmpty()) {
+                            QFile::remove(path);
+                        }
                     }
                     qDebug() << "History cleanup: removed" << deleteCount << "old records.";
                 }
+            } else {
+                qWarning() << "Failed to find old records for cleanup:" << findOldQuery.lastError().text();
             }
         }
     }
@@ -161,10 +186,15 @@ void HistoryManager::saveRecord(const QImage& image, const QString& result, Cont
 
 QList<HistoryRecord> HistoryManager::getRecentRecords(int limit)
 {
+    // 【修复】limit == -1 时使用配置值；配置值为 0 表示无限制
+    if (limit < 0) {
+        int configuredLimit = SettingsManager::instance()->historyLimit();
+        limit = (configuredLimit == 0) ? 999999 : configuredLimit;
+    }
+
     QList<HistoryRecord> list;
     QSqlQuery query(m_db);
 
-    // 【修改】SQL 查询中增加 result_text
     query.prepare("SELECT id, cached_image_path, result_text, recognition_type, timestamp FROM history ORDER BY timestamp DESC LIMIT ?");
     query.addBindValue(limit);
 
@@ -173,11 +203,16 @@ QList<HistoryRecord> HistoryManager::getRecentRecords(int limit)
             HistoryRecord record;
             record.id = query.value(0).toInt();
             record.cachedImagePath = query.value(1).toString();
-            record.resultText = query.value(2).toString();         // 【新增】读取结果文本
+            record.resultText = query.value(2).toString();
             record.recognitionType = static_cast<ContentType>(query.value(3).toInt());
-            record.timestamp = QDateTime::fromString(query.value(4).toString(), Qt::ISODate);
+            // 【修复】使用与 SQLite datetime('now','localtime') 输出匹配的格式
+            // SQLite 输出格式为 "2024-01-15 14:30:00"（空格分隔），
+            // Qt::ISODate 期望 "2024-01-15T14:30:00"（T 分隔），会导致解析失败
+            record.timestamp = QDateTime::fromString(query.value(4).toString(), "yyyy-MM-dd hh:mm:ss");
             list.append(record);
         }
+    } else {
+        qWarning() << "Failed to query recent records:" << query.lastError().text();
     }
     return list;
 }
@@ -195,31 +230,53 @@ HistoryRecord HistoryManager::getRecordById(int id)
         record.cachedImagePath = query.value(1).toString();
         record.resultText = query.value(2).toString();
         record.recognitionType = static_cast<ContentType>(query.value(3).toInt());
-        record.timestamp = QDateTime::fromString(query.value(4).toString(), Qt::ISODate);
+        // 【修复】同 getRecentRecords，使用匹配的格式字符串
+        record.timestamp = QDateTime::fromString(query.value(4).toString(), "yyyy-MM-dd hh:mm:ss");
+    } else {
+        if (!query.exec()) {
+            qWarning() << "Failed to get record by id:" << query.lastError().text();
+        }
     }
     return record;
 }
 
 void HistoryManager::deleteRecord(int id)
 {
+    // 【修复】删除记录前先获取关联的图片路径，以便清理图片文件
+    QSqlQuery findQuery(m_db);
+    findQuery.prepare("SELECT cached_image_path FROM history WHERE id = ?");
+    findQuery.addBindValue(id);
+
+    QString imagePath;
+    if (findQuery.exec() && findQuery.next()) {
+        imagePath = findQuery.value(0).toString();
+    }
+
     QSqlQuery query(m_db);
     query.prepare("DELETE FROM history WHERE id = ?");
     query.addBindValue(id);
 
     if (query.exec()) {
-        // 可选：此处可以顺便清理孤儿图片文件，但为了性能可以暂不清理，留待清理机制
+        // 【修复】删除关联的图片缓存文件，避免孤儿文件占用磁盘
+        if (!imagePath.isEmpty()) {
+            QFile::remove(imagePath);
+        }
+    } else {
+        qWarning() << "Failed to delete record:" << query.lastError().text();
     }
 }
 
 void HistoryManager::clearAll()
 {
     QSqlQuery query(m_db);
-    query.exec("DELETE FROM history");
+    if (!query.exec("DELETE FROM history")) {
+        qWarning() << "Failed to clear history:" << query.lastError().text();
+    }
 
     // 清空图片缓存目录
     QDir imgDir(m_dataPath + "/history_images");
     imgDir.setFilter(QDir::Files);
-    foreach (QFileInfo fileInfo, imgDir.entryInfoList()) {
+    foreach(QFileInfo fileInfo, imgDir.entryInfoList()) {
         QFile::remove(fileInfo.absoluteFilePath());
     }
 }

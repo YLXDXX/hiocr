@@ -28,7 +28,8 @@ public:
     void saveRecord(const QImage& image, const QString& result, ContentType type);
 
     // 获取最近的记录列表
-    QList<HistoryRecord> getRecentRecords(int limit = 50);
+    // 【修复】默认参数改为 -1，表示使用配置值；配置值为 0 表示无限制
+    QList<HistoryRecord> getRecentRecords(int limit = -1);
 
     // 根据 ID 删除记录
     void deleteRecord(int id);
