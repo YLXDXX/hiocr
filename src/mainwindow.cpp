@@ -9,6 +9,7 @@
 #include "copyprocessor.h"
 #include "markdowncopybar.h"
 #include "historymanager.h"
+#include "constants.h"
 
 #include <QSplitter>
 #include <QVBoxLayout>
@@ -38,6 +39,9 @@
 #include <QDialog>
 #include <QListWidget>
 #include <QDialogButtonBox>
+#include <QSpinBox>
+
+
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
 {
@@ -480,71 +484,52 @@ void MainWindow::appendRecognitionResult(const QString& delta)
 }
 
 
-// 【新增】实现查看历史记录对话框
 void MainWindow::showHistoryDialog()
 {
     QDialog* dialog = new QDialog(this);
     dialog->setWindowTitle("识别历史记录");
-    dialog->resize(900, 600); // 【修改】稍微调大默认窗口尺寸
+    dialog->resize(900, 600);
 
     QVBoxLayout* mainLayout = new QVBoxLayout(dialog);
 
+    // --- 记录列表 ---
     QListWidget* listWidget = new QListWidget(dialog);
     listWidget->setViewMode(QListView::ListMode);
-
-    // 【修改 1】增大图标尺寸，让图片更清晰
     listWidget->setIconSize(QSize(250, 250));
-
     listWidget->setResizeMode(QListView::Adjust);
     listWidget->setAlternatingRowColors(true);
-
-    // 【新增】开启自动换行，以便显示多行文本预览
     listWidget->setWordWrap(true);
     listWidget->setStyleSheet("QListWidget::item { padding: 10px; border-bottom: 1px solid #ddd; }");
-
     mainLayout->addWidget(listWidget);
 
-    // 加载记录
-    auto records = HistoryManager::instance()->getRecentRecords();
-    for (const auto& record : records) {
-        QListWidgetItem* item = new QListWidgetItem(listWidget);
+    // --- 【新增】分页控件 ---
+    QWidget* pageWidget = new QWidget(dialog);
+    QHBoxLayout* pageLayout = new QHBoxLayout(pageWidget);
+    pageLayout->setContentsMargins(0, 4, 0, 4);
 
-        // 设置图标
-        QPixmap pix(record.cachedImagePath);
-        if (!pix.isNull()) {
-            item->setIcon(QIcon(pix.scaled(250, 250, Qt::KeepAspectRatio, Qt::SmoothTransformation)));
-        } else {
-            item->setIcon(QIcon::fromTheme("image-missing"));
-        }
+    QPushButton* prevPageBtn = new QPushButton("上一页");
+    QPushButton* nextPageBtn = new QPushButton("下一页");
+    QLabel* pageInfoLabel = new QLabel();
+    pageInfoLabel->setAlignment(Qt::AlignCenter);
 
-        // 解析类型
-        QString typeStr = "文字";
-        if (record.recognitionType == ContentType::Formula) typeStr = "公式";
-        else if (record.recognitionType == ContentType::Table) typeStr = "表格";
+    // 跳转控件
+    QLabel* jumpLabel = new QLabel("跳转到:");
+    QSpinBox* jumpSpin = new QSpinBox();
+    jumpSpin->setMinimum(1);
+    QPushButton* jumpBtn = new QPushButton("跳转");
 
-        // 【修改 2】格式化显示文本：时间+类型 + 结果预览
-        QString header = QString("[%1] %2").arg(record.timestamp.toString("MM-dd hh:mm")).arg(typeStr);
+    pageLayout->addWidget(prevPageBtn);
+    pageLayout->addStretch();
+    pageLayout->addWidget(pageInfoLabel);
+    pageLayout->addStretch();
+    pageLayout->addWidget(jumpLabel);
+    pageLayout->addWidget(jumpSpin);
+    pageLayout->addWidget(jumpBtn);
+    pageLayout->addWidget(nextPageBtn);
 
-        // 提取结果预览（去除换行，取前50个字符）
-        QString preview = record.resultText;
-        preview.replace("\n", " "); // 将换行替换为空格，避免预览排版乱
-        if (preview.length() > 80) {
-            preview = preview.left(80) + "...";
-        }
+    mainLayout->addWidget(pageWidget);
 
-        // 组合最终文本，使用换行符分隔标题和预览
-        item->setText(QString("%1\n%2").arg(header).arg(preview));
-
-        // 设置完整的工具提示
-        item->setToolTip(QString("时间: %1\n类型: %2\n\n%3")
-        .arg(record.timestamp.toString("yyyy-MM-dd hh:mm:ss"))
-        .arg(typeStr)
-        .arg(record.resultText));
-
-        item->setData(Qt::UserRole, record.id); // 存储 ID
-    }
-
-    // 按钮区域
+    // --- 底部操作按钮 ---
     QDialogButtonBox* buttons = new QDialogButtonBox(QDialogButtonBox::Open | QDialogButtonBox::Close, dialog);
     QPushButton* loadBtn = buttons->button(QDialogButtonBox::Open);
     loadBtn->setText("加载到编辑器");
@@ -552,7 +537,130 @@ void MainWindow::showHistoryDialog()
     QPushButton* deleteBtn = buttons->addButton("删除选中", QDialogButtonBox::ActionRole);
     QPushButton* clearBtn = buttons->addButton("清空历史", QDialogButtonBox::ActionRole);
 
-    // 加载按钮点击
+    mainLayout->addWidget(buttons);
+
+    // --- 分页状态 ---
+    const int pageSize = Constants::HISTORY_PAGE_SIZE;
+    int currentPage = 1;
+    int totalCount = 0;
+    int totalPages = 1;
+
+    // --- 加载当前页数据 ---
+    // 使用 std::function 实现递归 lambda（C++14/17 兼容）
+    std::function<void()> loadCurrentPage;
+    loadCurrentPage = [&]() {
+        // 获取最新的总记录数
+        totalCount = HistoryManager::instance()->getTotalCount();
+        totalPages = (totalCount == 0) ? 1 : (totalCount + pageSize - 1) / pageSize;
+
+        // 修正当前页码（删除记录后可能超出范围）
+        if (currentPage > totalPages) {
+            currentPage = totalPages;
+        }
+        if (currentPage < 1) {
+            currentPage = 1;
+        }
+
+        // 清空列表
+        listWidget->clear();
+
+        // 计算偏移量
+        int offset = (currentPage - 1) * pageSize;
+
+        // 从数据库查询当前页记录
+        auto records = HistoryManager::instance()->getRecentRecords(pageSize, offset);
+        for (const auto& record : records) {
+            QListWidgetItem* item = new QListWidgetItem(listWidget);
+
+            // 设置图标
+            QPixmap pix(record.cachedImagePath);
+            if (!pix.isNull()) {
+                item->setIcon(QIcon(pix.scaled(250, 250, Qt::KeepAspectRatio, Qt::SmoothTransformation)));
+            } else {
+                item->setIcon(QIcon::fromTheme("image-missing"));
+            }
+
+            // 解析类型
+            QString typeStr = "文字";
+            if (record.recognitionType == ContentType::Formula) typeStr = "公式";
+            else if (record.recognitionType == ContentType::Table) typeStr = "表格";
+
+            // 格式化显示文本
+            QString header = QString("[%1] %2").arg(record.timestamp.toString("MM-dd hh:mm")).arg(typeStr);
+
+            QString preview = record.resultText;
+            preview.replace("\n", " ");
+            if (preview.length() > 80) {
+                preview = preview.left(80) + "...";
+            }
+
+            item->setText(QString("%1\n%2").arg(header).arg(preview));
+
+            item->setToolTip(QString("时间: %1\n类型: %2\n\n%3")
+            .arg(record.timestamp.toString("yyyy-MM-dd hh:mm:ss"))
+            .arg(typeStr)
+            .arg(record.resultText));
+
+            item->setData(Qt::UserRole, record.id);
+        }
+
+        // 更新分页控件状态
+        prevPageBtn->setEnabled(currentPage > 1);
+        nextPageBtn->setEnabled(currentPage < totalPages);
+
+        // 更新页码信息
+        if (totalCount == 0) {
+            pageInfoLabel->setText("暂无记录");
+        } else {
+            pageInfoLabel->setText(QString("第 %1 / %2 页  (共 %3 条)")
+            .arg(currentPage)
+            .arg(totalPages)
+            .arg(totalCount));
+        }
+
+        // 更新跳转控件
+        jumpSpin->setMaximum(totalPages);
+        jumpSpin->setValue(currentPage);
+        jumpSpin->setEnabled(totalPages > 1);
+        jumpBtn->setEnabled(totalPages > 1);
+    };
+
+    // --- 首次加载 ---
+    loadCurrentPage();
+
+    // --- 翻页信号 ---
+    connect(prevPageBtn, &QPushButton::clicked, this, [&]() {
+        if (currentPage > 1) {
+            currentPage--;
+            loadCurrentPage();
+        }
+    });
+
+    connect(nextPageBtn, &QPushButton::clicked, this, [&]() {
+        if (currentPage < totalPages) {
+            currentPage++;
+            loadCurrentPage();
+        }
+    });
+
+    connect(jumpBtn, &QPushButton::clicked, this, [&]() {
+        int targetPage = jumpSpin->value();
+        if (targetPage >= 1 && targetPage <= totalPages) {
+            currentPage = targetPage;
+            loadCurrentPage();
+        }
+    });
+
+    // 跳转框回车触发跳转
+    connect(jumpSpin, QOverload<int>::of(&QSpinBox::valueChanged), this, [&](int value) {
+        // 只在用户通过键盘回车确认时跳转，不在这里自动跳转
+        // 避免每次值变化都触发加载
+        Q_UNUSED(value);
+    });
+
+    // --- 操作按钮信号 ---
+
+    // 加载按钮
     connect(loadBtn, &QPushButton::clicked, this, [this, listWidget, dialog](){
         auto currentItem = listWidget->currentItem();
         if (currentItem) {
@@ -562,21 +670,23 @@ void MainWindow::showHistoryDialog()
         }
     });
 
-    // 删除按钮点击
-    connect(deleteBtn, &QPushButton::clicked, this, [listWidget](){
+    // 删除按钮
+    connect(deleteBtn, &QPushButton::clicked, this, [&]() {
         auto currentItem = listWidget->currentItem();
         if (currentItem) {
             int recordId = currentItem->data(Qt::UserRole).toInt();
             HistoryManager::instance()->deleteRecord(recordId);
-            delete listWidget->takeItem(listWidget->row(currentItem));
+            // 不关闭对话框，刷新当前页
+            loadCurrentPage();
         }
     });
 
-    // 清空按钮点击
-    connect(clearBtn, &QPushButton::clicked, this, [listWidget, dialog](){
+    // 清空按钮
+    connect(clearBtn, &QPushButton::clicked, this, [&]() {
         if (QMessageBox::question(dialog, "确认", "确定要清空所有历史记录吗？") == QMessageBox::Yes) {
             HistoryManager::instance()->clearAll();
-            listWidget->clear();
+            currentPage = 1;
+            loadCurrentPage();
         }
     });
 
@@ -588,7 +698,6 @@ void MainWindow::showHistoryDialog()
     });
 
     connect(buttons, &QDialogButtonBox::rejected, dialog, &QDialog::close);
-    mainLayout->addWidget(buttons);
 
     dialog->exec();
     dialog->deleteLater();

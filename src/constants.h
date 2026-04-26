@@ -110,6 +110,9 @@ namespace Constants {
     const int DEFAULT_FLOATING_BALL_POS_Y = -1;
     const int DEFAULT_FLOATING_BALL_AUTO_HIDE_TIME = 5000; // 毫秒，0表示不自动隐藏
     const bool DEFAULT_FLOATING_BALL_ALWAYS_VISIBLE = false;
+
+    // 历史记录分页设置
+    const int HISTORY_PAGE_SIZE = 50;  // 每页显示的记录条数
 }
 
 #endif // CONSTANTS_H

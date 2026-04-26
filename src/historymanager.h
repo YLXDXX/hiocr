@@ -27,9 +27,13 @@ public:
     // 保存或更新记录（根据图片内容哈希判断）
     void saveRecord(const QImage& image, const QString& result, ContentType type);
 
-    // 获取最近的记录列表
-    // 【修复】默认参数改为 -1，表示使用配置值；配置值为 0 表示无限制
-    QList<HistoryRecord> getRecentRecords(int limit = -1);
+    // 获取最近的记录列表（分页）
+    // limit: 每页条数，-1 表示使用配置值；配置值为 0 表示无限制
+    // offset: 跳过的记录数（用于分页偏移）
+    QList<HistoryRecord> getRecentRecords(int limit = -1, int offset = 0);
+
+    // 【新增】获取历史记录总条数
+    int getTotalCount();
 
     // 根据 ID 删除记录
     void deleteRecord(int id);
