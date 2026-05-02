@@ -94,6 +94,7 @@ private:
 
     QSpinBox* m_rendererFontSpin;
     QSpinBox* m_sourceEditorFontSpin;
+    QCheckBox* m_showLineNumbersCheck;
     QSpinBox* m_serviceIdleTimeoutSpin;
 
     // 【新增】自动启动服务开关

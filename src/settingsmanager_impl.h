@@ -72,6 +72,7 @@ inline void SettingsManager::initializeDefaults()
         m_settings.setValue("prompts/table", Constants::PROMPT_TABLE);
         m_settings.setValue("display/renderer_font_size", Constants::DEFAULT_RENDERER_FONT_SIZE);
         m_settings.setValue("display/source_editor_font_size", Constants::DEFAULT_SOURCE_EDITOR_FONT_SIZE);
+        m_settings.setValue("display/show_line_numbers", Constants::DEFAULT_SHOW_LINE_NUMBERS);
 
         // 初始化默认服务列表
         QList<ServiceProfile> defaults;
@@ -195,6 +196,10 @@ inline void SettingsManager::initializeDefaults()
         }
         if (!m_settings.contains("behavior/formatter_order")) {
             m_settings.setValue("behavior/formatter_order", Constants::DEFAULT_FORMATTER_ORDER);
+            needsSync = true;
+        }
+        if (!m_settings.contains("display/show_line_numbers")) {
+            m_settings.setValue("display/show_line_numbers", Constants::DEFAULT_SHOW_LINE_NUMBERS);
             needsSync = true;
         }
 
@@ -397,6 +402,9 @@ inline void SettingsManager::setRendererFontSize(int size) { if (rendererFontSiz
 
 inline int SettingsManager::sourceEditorFontSize() const { return m_settings.value("display/source_editor_font_size", Constants::DEFAULT_SOURCE_EDITOR_FONT_SIZE).toInt(); }
 inline void SettingsManager::setSourceEditorFontSize(int size) { if (sourceEditorFontSize() != size) { m_settings.setValue("display/source_editor_font_size", size); emit sourceEditorFontSizeChanged(size); } }
+
+inline bool SettingsManager::showLineNumbers() const { return m_settings.value("display/show_line_numbers", Constants::DEFAULT_SHOW_LINE_NUMBERS).toBool(); }
+inline void SettingsManager::setShowLineNumbers(bool enabled) { if (showLineNumbers() != enabled) { m_settings.setValue("display/show_line_numbers", enabled); emit showLineNumbersChanged(enabled); } }
 
 
 

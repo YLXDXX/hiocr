@@ -131,6 +131,9 @@ public:
     int sourceEditorFontSize() const;
     void setSourceEditorFontSize(int size);
 
+    bool showLineNumbers() const;
+    void setShowLineNumbers(bool enabled);
+
 
     // 【新增】服务管理接口
     enum ServiceSwitchMode {
@@ -277,6 +280,7 @@ signals:
 
     void rendererFontSizeChanged(int size);
     void sourceEditorFontSizeChanged(int size);
+    void showLineNumbersChanged(bool enabled);
 
     void textProcessorCommandChanged(const QString& cmd);
     void formulaProcessorCommandChanged(const QString& cmd);

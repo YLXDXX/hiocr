@@ -56,6 +56,7 @@ namespace Constants {
     // 字体大小默认值
     const int DEFAULT_RENDERER_FONT_SIZE = 16;   // Markdown 渲染区默认字体大小
     const int DEFAULT_SOURCE_EDITOR_FONT_SIZE = 13; // Markdown 源码编辑区默认字体大小
+    const bool DEFAULT_SHOW_LINE_NUMBERS = false;
 
 
     // --- 默认服务配置 ---

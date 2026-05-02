@@ -182,6 +182,9 @@ inline void SettingsDialog::setupUi()
     m_sourceEditorFontSpin->setRange(8, 32);
     m_sourceEditorFontSpin->setSuffix(" pt");
     displayLayout->addRow("源码编辑字体大小:", m_sourceEditorFontSpin);
+
+    m_showLineNumbersCheck = new QCheckBox("显示行号");
+    displayLayout->addRow(m_showLineNumbersCheck);
     mainLayout->addWidget(displayGroup);
 
     // --- 行为设置 ---
@@ -494,6 +497,7 @@ inline void SettingsDialog::loadSettings()
 
     m_rendererFontSpin->setValue(s->rendererFontSize());
     m_sourceEditorFontSpin->setValue(s->sourceEditorFontSize());
+    m_showLineNumbersCheck->setChecked(s->showLineNumbers());
 
     m_autoStartServiceCheck->setChecked(s->autoStartService());
 
@@ -646,6 +650,7 @@ inline void SettingsDialog::onSaveClicked()
 
     s->setRendererFontSize(m_rendererFontSpin->value());
     s->setSourceEditorFontSize(m_sourceEditorFontSpin->value());
+    s->setShowLineNumbers(m_showLineNumbersCheck->isChecked());
 
     s->setAutoStartService(m_autoStartServiceCheck->isChecked());
 
@@ -693,6 +698,7 @@ inline void SettingsDialog::onRestoreDefaults()
 
     m_rendererFontSpin->setValue(Constants::DEFAULT_RENDERER_FONT_SIZE);
     m_sourceEditorFontSpin->setValue(Constants::DEFAULT_SOURCE_EDITOR_FONT_SIZE);
+    m_showLineNumbersCheck->setChecked(Constants::DEFAULT_SHOW_LINE_NUMBERS);
 
     // 【新增】恢复历史设置
     m_saveHistoryCheck->setChecked(Constants::DEFAULT_SAVE_HISTORY);
