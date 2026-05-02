@@ -3,6 +3,7 @@ set(LIB_HEADERS
     networkmanager.h
     imageprocessor.h
     settingsmanager.h
+    settingsmanager_impl.h
     copyprocessor.h
 )
 
@@ -16,9 +17,12 @@ set(APP_SOURCES
 )
 
 set(APP_HEADERS
+    contenttype.h
     mainwindow.h
+    mainwindow_impl.h
     markdownbridge.h
     imageviewwidget.h
+    imageviewwidget_impl.h
     markdownrenderer.h
     markdownsourceeditor.h
     promptbar.h
@@ -28,8 +32,10 @@ set(APP_HEADERS
     traymanager.h
     recognitionmanager.h
     appcontroller.h
+    appcontroller_impl.h
     shortcuthandler.h
     settingsdialog.h
+    settingsdialog_impl.h
     constants.h
     markdowncopybar.h
     servicemanager.h
@@ -37,6 +43,7 @@ set(APP_HEADERS
     singleapplication.h
     historymanager.h
     floatingball.h
+    floatingball_impl.h
 )
 
 if(HAVE_KF6)
