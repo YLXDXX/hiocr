@@ -86,6 +86,7 @@ inline void ServiceManager::startService(const QString& id, const QString& comma
     }
 
     QProcess* process = m_processes[id];
+    process->setProperty("intentionallyKilled", false);
 
     if (process->state() == QProcess::Running) {
         emit serviceStarted(id);
@@ -196,6 +197,9 @@ inline void ServiceManager::onProcessFinished(int exitCode, QProcess::ExitStatus
 
     emit serviceStopped(id);
     emit runningCountChanged(runningCount());
+
+    m_processes.remove(id);
+    process->deleteLater();
 }
 
 #endif // SERVICEMANAGER_H

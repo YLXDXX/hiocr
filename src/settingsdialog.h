@@ -43,7 +43,6 @@ private:
     ShortcutEdit* m_scFormulaEdit;
     ShortcutEdit* m_scTableEdit;
     ShortcutEdit* m_abortScEdit;
-    ShortcutEdit* m_scTableEd;
 
     // --- 新增：脚本配置控件 ---
     QLineEdit* m_textProcessorEdit;

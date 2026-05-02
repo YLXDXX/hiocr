@@ -236,7 +236,7 @@ inline QList<HistoryRecord> HistoryManager::getRecentRecords(int limit, int offs
             record.cachedImagePath = query.value(1).toString();
             record.resultText = query.value(2).toString();
             record.recognitionType = static_cast<ContentType>(query.value(3).toInt());
-            record.timestamp = QDateTime::fromString(query.value(4).toString(), "yyyy-MM-dd hh:mm:ss");
+            record.timestamp = QDateTime::fromString(query.value(4).toString(), "yyyy-MM-dd HH:mm:ss");
             list.append(record);
         }
     } else {

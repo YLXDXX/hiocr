@@ -118,6 +118,7 @@ inline void ShortcutHandler::setupGlobalShortcuts()
             else if (id == "text_recognize") emit textRecognizeRequested();
             else if (id == "formula_recognize") emit formulaRecognizeRequested();
             else if (id == "table_recognize") emit tableRecognizeRequested();
+            else if (id == "abort") emit abortRequested();
             else if (id == "text_processor") emit textProcessorRequested();
             else if (id == "formula_processor") emit formulaProcessorRequested();
             else if (id == "table_processor") emit tableProcessorRequested();
@@ -129,6 +130,7 @@ inline void ShortcutHandler::setupGlobalShortcuts()
             ks->registerShortcut("text_recognize", "Text Recognize", s->textRecognizeShortcut());
             ks->registerShortcut("formula_recognize", "Formula Recognize", s->formulaRecognizeShortcut());
             ks->registerShortcut("table_recognize", "Table Recognize", s->tableRecognizeShortcut());
+            ks->registerShortcut("abort", "Abort", s->abortShortcut());
             ks->registerShortcut("text_processor", "Text Processor", s->textProcessorShortcut());
             ks->registerShortcut("formula_processor", "Formula Processor", s->formulaProcessorShortcut());
             ks->registerShortcut("table_processor", "Table Processor", s->tableProcessorShortcut());
@@ -148,6 +150,7 @@ inline void ShortcutHandler::setupGlobalShortcuts()
             else if (id == "text_recognize") emit textRecognizeRequested();
             else if (id == "formula_recognize") emit formulaRecognizeRequested();
             else if (id == "table_recognize") emit tableRecognizeRequested();
+            else if (id == "abort") emit abortRequested();
             else if (id == "text_processor") emit textProcessorRequested();
             else if (id == "formula_processor") emit formulaProcessorRequested();
             else if (id == "table_processor") emit tableProcessorRequested();
@@ -159,6 +162,7 @@ inline void ShortcutHandler::setupGlobalShortcuts()
             gsm->registerShortcut("text_recognize", "Text Recognize", s->textRecognizeShortcut());
             gsm->registerShortcut("formula_recognize", "Formula Recognize", s->formulaRecognizeShortcut());
             gsm->registerShortcut("table_recognize", "Table Recognize", s->tableRecognizeShortcut());
+            gsm->registerShortcut("abort", "Abort", s->abortShortcut());
 
             gsm->registerShortcut("text_processor", "Text Processor", s->textProcessorShortcut());
             gsm->registerShortcut("formula_processor", "Formula Processor", s->formulaProcessorShortcut());

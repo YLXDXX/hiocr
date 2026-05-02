@@ -36,12 +36,18 @@ inline ImageViewWidget::ImageViewWidget(QWidget* parent) : QWidget(parent), m_ma
 
 inline void ImageViewWidget::setupUi()
 {
-    QVBoxLayout* layout = new QVBoxLayout(this);
-    layout->setContentsMargins(0, 0, 0, 0);
+    QVBoxLayout* outerLayout = new QVBoxLayout(this);
+    outerLayout->setContentsMargins(0, 0, 0, 0);
+    outerLayout->setSpacing(0);
 
     QLabel* hint = new QLabel("提示：可按 Ctrl+V 粘贴剪贴板图片", this);
     hint->setStyleSheet("color: gray; font-size: 12px;");
-    layout->addWidget(hint);
+    outerLayout->addWidget(hint);
+
+    QWidget* viewContainer = new QWidget(this);
+    QGridLayout* gridLayout = new QGridLayout(viewContainer);
+    gridLayout->setContentsMargins(0, 0, 0, 0);
+    gridLayout->setSpacing(0);
 
     m_view = new QGraphicsView(this);
     m_scene = new QGraphicsScene(this);
@@ -66,7 +72,6 @@ inline void ImageViewWidget::setupUi()
     );
 
     m_view->setFocusPolicy(Qt::StrongFocus);
-    layout->addWidget(m_view);
 
     m_pixmapItem = nullptr;
 
@@ -104,7 +109,12 @@ inline void ImageViewWidget::setupUi()
     connect(m_fitToHeightBtn, &QPushButton::clicked, this, &ImageViewWidget::onFitToHeightClicked);
     connect(m_originalSizeBtn, &QPushButton::clicked, this, &ImageViewWidget::onOriginalSizeClicked);
 
-    m_buttonContainer->raise();
+    gridLayout->addWidget(m_view, 0, 0);
+    gridLayout->addWidget(m_buttonContainer, 0, 0, Qt::AlignRight | Qt::AlignBottom);
+    gridLayout->setColumnStretch(0, 1);
+    gridLayout->setRowStretch(0, 1);
+
+    outerLayout->addWidget(viewContainer);
 }
 
 inline void ImageViewWidget::setImage(const QImage& image)
@@ -286,11 +296,6 @@ inline void ImageViewWidget::wheelEvent(QWheelEvent* event)
 inline void ImageViewWidget::resizeEvent(QResizeEvent* event)
 {
     QWidget::resizeEvent(event);
-    if (m_buttonContainer) {
-        int x = width() - m_buttonContainer->width() - 10;
-        int y = height() - m_buttonContainer->height() - 10;
-        m_buttonContainer->move(x, y);
-    }
     if (hasImage() && !m_manualZoomMode) {
         updateView();
     }

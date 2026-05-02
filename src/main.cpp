@@ -62,39 +62,6 @@ void intSignalHandler(int)
     ::write(sigintFd[0], &a, sizeof(a));
 }
 
-// 发送参数前，先处理路径格式
-bool trySendToExistingInstance(QString imagePath, const QString& resultText)
-{
-    // 【关键修复】如果是相对路径，转换为绝对路径
-    // 因为主实例的工作目录可能与当前进程不同
-    if (!imagePath.isEmpty()) {
-        QFileInfo fileInfo(imagePath);
-        if (fileInfo.isRelative()) {
-            imagePath = fileInfo.absoluteFilePath();
-        }
-    }
-
-    QLocalSocket socket;
-    socket.connectToServer(SINGLE_INSTANCE_KEY, QIODevice::WriteOnly);
-
-    if (socket.waitForConnected(500)) {
-        // 这里故意不使用 qDebug，因为此时如果消息处理器已安装但 verbose 未设置，这行日志可能会被吞掉
-        // 不过作为客户端，通常日志是给用户看的，这里保持静默或直接打印即可
-        QJsonObject obj;
-        obj["image"] = imagePath;
-        obj["result"] = resultText;
-        QByteArray data = QJsonDocument(obj).toJson();
-
-        socket.write(data);
-        socket.waitForBytesWritten(1000);
-        socket.disconnectFromServer();
-
-        return true;
-    }
-
-    return false;
-}
-
 
 int main(int argc, char *argv[])
 {

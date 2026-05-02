@@ -115,7 +115,7 @@ inline void MarkdownCopyBar::setCurrentServiceName(const QString& name)
 
 inline bool MarkdownCopyBar::isChandraService() const
 {
-    return m_currentServiceName.contains("chandra", Qt::CaseInsensitive);
+    return ServiceUtils::isChandraService(m_currentServiceName);
 }
 
 inline void MarkdownCopyBar::onSourceTextChanged()

@@ -85,11 +85,11 @@ inline void SingleApplication::onNewConnection()
     QLocalSocket *socket = m_server->nextPendingConnection();
     if (!socket) return;
 
-    if (socket->waitForReadyRead(1000)) {
+    connect(socket, &QLocalSocket::disconnected, socket, &QLocalSocket::deleteLater);
+    connect(socket, &QLocalSocket::readyRead, this, [this, socket]() {
         QByteArray data = socket->readAll();
         emit messageReceived(data);
-    }
-    socket->deleteLater();
+    });
 }
 
 #endif // SINGLEAPPLICATION_H

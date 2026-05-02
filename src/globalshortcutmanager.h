@@ -44,6 +44,7 @@ public:
     void registerShortcut(const QString& id, const QString& description, const QString& preferredShortcut);
     void unregisterShortcut(const QString& id);
     void startListening();
+    void restartListening();
 
 signals:
     void activated(const QString& id);
@@ -63,6 +64,7 @@ private:
     QMap<QString, QVariantMap> m_shortcuts;
     QString m_sessionHandle;
     bool m_isActive;
+    bool m_listeningStarted = false;
 };
 
 // --- Implementation ---
@@ -98,11 +100,10 @@ inline void GlobalShortcutManager::unregisterShortcut(const QString& id) {
 }
 
 inline void GlobalShortcutManager::startListening() {
-    static bool connectionEstablished = false;
-    if (m_isActive || connectionEstablished) return;
+    if (m_isActive || m_listeningStarted) return;
 
     if (QGuiApplication::platformName() == "wayland") {
-        connectionEstablished = true;
+        m_listeningStarted = true;
         tryAcquireSession();
 
         QDBusConnection::sessionBus().connect(
@@ -114,6 +115,13 @@ inline void GlobalShortcutManager::startListening() {
             SLOT(onActivated(QDBusObjectPath,QString,quint64,QVariantMap))
         );
     }
+}
+
+inline void GlobalShortcutManager::restartListening() {
+    m_listeningStarted = false;
+    m_isActive = false;
+    m_sessionHandle.clear();
+    startListening();
 }
 
 inline void GlobalShortcutManager::tryAcquireSession() {

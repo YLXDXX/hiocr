@@ -400,6 +400,8 @@ inline void MainWindow::setStreamingMode(bool streaming)
     } else {
         m_markdownRenderer->stopStreaming();
 
+        disconnect(m_markdownSource, &QPlainTextEdit::textChanged,
+                   this, &MainWindow::onMarkdownSourceChanged);
         connect(m_markdownSource, &QPlainTextEdit::textChanged,
                 this, &MainWindow::onMarkdownSourceChanged);
     }

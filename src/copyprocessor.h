@@ -148,24 +148,7 @@ inline QString CopyProcessor::getFinalCommand(ContentType originalType, const QS
 
 inline bool CopyProcessor::isPureMathContent(const QString& text) const
 {
-    QString trimmed = text.trimmed();
-    if (trimmed.isEmpty()) return false;
-
-    if (trimmed.contains("<math")) return false;
-
-    bool isDisplay = (trimmed.startsWith("$$") && trimmed.endsWith("$$")) ||
-    (trimmed.startsWith("\\[") && trimmed.endsWith("\\]"));
-
-    bool isInline = (trimmed.startsWith("$") && trimmed.endsWith("$") && !trimmed.startsWith("$$")) ||
-    (trimmed.startsWith("\\(") && trimmed.endsWith("\\)"));
-
-    if (isDisplay || isInline) {
-        if (trimmed.contains("\n\n")) return false;
-        if (trimmed.startsWith("$$") && trimmed.count("$$") > 2) return false;
-        if (trimmed.startsWith("\\[") && (trimmed.count("\\[") > 1 || trimmed.count("\\]") > 1)) return false;
-        return true;
-    }
-    return false;
+    return ServiceUtils::isPureMathContent(text);
 }
 
 inline void CopyProcessor::executeCommand(const QString& command, const QString& text)
@@ -181,7 +164,10 @@ inline void CopyProcessor::executeCommand(const QString& command, const QString&
 
     QString fullCommand = command;
     if (!m_serviceName.isEmpty()) {
-        fullCommand += " --mode-name \"" + m_serviceName + "\"";
+        QString escapedName = m_serviceName;
+        escapedName.replace("\\", "\\\\");
+        escapedName.replace("\"", "\\\"");
+        fullCommand += " --mode-name \"" + escapedName + "\"";
     }
 
     m_currentProcess->startCommand(fullCommand);

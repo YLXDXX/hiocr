@@ -4,7 +4,7 @@
 #include <QString>
 
 namespace Constants {
-    // --- 提示词常量 ---
+    // --- 提示词默认值（简短标签，完整提示词请参见 prompt.md）---
     const QString PROMPT_TEXT = "Text Recognition:";
     const QString PROMPT_FORMULA = "Formula Recognition:";
     const QString PROMPT_TABLE = "Table Recognition:";

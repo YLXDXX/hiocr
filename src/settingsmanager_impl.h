@@ -5,11 +5,18 @@
 
 // ====== Method implementations ======
 
+#include <QAtomicPointer>
+
 inline SettingsManager* SettingsManager::instance()
 {
-    static SettingsManager* s_instance = nullptr;
-    if (!s_instance) s_instance = new SettingsManager();
-    return s_instance;
+    static QAtomicPointer<SettingsManager> s_instance;
+    if (!s_instance.loadAcquire()) {
+        SettingsManager* inst = new SettingsManager();
+        if (!s_instance.testAndSetRelease(nullptr, inst)) {
+            delete inst;
+        }
+    }
+    return s_instance.loadAcquire();
 }
 
 inline SettingsManager::SettingsManager(QObject* parent) : QObject(parent)

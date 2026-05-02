@@ -22,6 +22,7 @@
 #include <QResizeEvent>
 #include <QTimer>
 #include <QtMath>
+#include <QGridLayout>
 
 #include "imageprocessor.h"
 #include "settingsmanager.h"
