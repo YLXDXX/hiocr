@@ -280,6 +280,7 @@ inline void FloatingBall::ensureKeepAbove()
 
     if (KWindowSystem::isPlatformX11()) {
         KX11Extras::setState(wid, NET::KeepAbove);
+        KX11Extras::setType(wid, NET::Notification);
     } else {
         QTimer::singleShot(100, this, &FloatingBall::requestKeepAboveViaKWin);
     }
@@ -299,7 +300,9 @@ inline void FloatingBall::requestKeepAboveViaKWin() {
     "for (var i = 0; i < windows.length; i++) {"
     "    if (windows[i].caption === 'hiocr_floating_ball' && windows[i].resourceClass === 'hiocr') {"
     "        windows[i].keepAbove = true;"
-    "        print('HIOCR_TEST: Found and set KeepAbove: '+windows[i].caption+'  '+windows[i].resourceClass);"
+    "        windows[i].skipTaskbar = true;"
+    "        windows[i].skipSwitcher = true;"
+    "        print('HIOCR_TEST: Set window properties: '+windows[i].caption+'  '+windows[i].resourceClass);"
     "        break;"
     "    }"
     "}";
