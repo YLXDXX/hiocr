@@ -1,11 +1,4 @@
-# 核心库源文件
-set(LIB_SOURCES
-    networkmanager.cpp
-    imageprocessor.cpp
-    settingsmanager.cpp
-    copyprocessor.cpp
-)
-
+# 核心库头文件 (已合并为 header-only)
 set(LIB_HEADERS
     networkmanager.h
     imageprocessor.h
@@ -13,32 +6,13 @@ set(LIB_HEADERS
     copyprocessor.h
 )
 
-add_library(hiocr_lib STATIC ${LIB_SOURCES} ${LIB_HEADERS})
+add_library(hiocr_lib STATIC ${LIB_HEADERS})
 target_link_libraries(hiocr_lib Qt6::Core Qt6::Network Qt6::Gui)
 target_include_directories(hiocr_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 # 主程序源文件
 set(APP_SOURCES
     main.cpp
-    mainwindow.cpp
-    imageviewwidget.cpp
-    markdownrenderer.cpp
-    markdownsourceeditor.cpp
-    promptbar.cpp
-    screenshotareaselector.cpp
-    screenshotmanager.cpp
-    globalshortcutmanager.cpp
-    traymanager.cpp
-    recognitionmanager.cpp
-    appcontroller.cpp
-    shortcuthandler.cpp
-    settingsdialog.cpp
-    markdowncopybar.cpp
-    servicemanager.cpp
-    shortcutedit.cpp
-    singleapplication.cpp
-    historymanager.cpp
-    floatingball.cpp
 )
 
 set(APP_HEADERS
@@ -53,6 +27,8 @@ set(APP_HEADERS
     globalshortcutmanager.h
     traymanager.h
     recognitionmanager.h
+    appcontroller.h
+    shortcuthandler.h
     settingsdialog.h
     constants.h
     markdowncopybar.h
@@ -64,7 +40,6 @@ set(APP_HEADERS
 )
 
 if(HAVE_KF6)
-    list(APPEND APP_SOURCES kdeglobalshortcut.cpp)
     list(APPEND APP_HEADERS kdeglobalshortcut.h)
 endif()
 

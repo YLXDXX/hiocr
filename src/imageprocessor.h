@@ -3,17 +3,47 @@
 
 #include <QImage>
 #include <QString>
+#include <QFile>
+#include <QByteArray>
+#include <QBuffer>
+#include <QImageReader>
+#include <QDebug>
 
 class ImageProcessor {
 public:
-    // 从文件加载QImage，失败返回空QImage
     static QImage loadImage(const QString& filePath);
 
-    // 将图片文件转换为Base64字符串（PNG格式）
     static QString fileToBase64(const QString& filePath);
 
-    // 将QImage转换为Base64字符串（PNG格式）
     static QString imageToBase64(const QImage& image);
 };
+
+inline QImage ImageProcessor::loadImage(const QString& filePath) {
+    QImageReader reader(filePath);
+    if (!reader.canRead()) {
+        qWarning() << "无法读取图片：" << filePath;
+        return QImage();
+    }
+    return reader.read();
+}
+
+inline QString ImageProcessor::fileToBase64(const QString& filePath) {
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadOnly)) {
+        qWarning() << "无法打开文件：" << filePath;
+        return QString();
+    }
+    QByteArray data = file.readAll();
+    return data.toBase64();
+}
+
+inline QString ImageProcessor::imageToBase64(const QImage& image) {
+    if (image.isNull()) return QString();
+    QByteArray bytes;
+    QBuffer buffer(&bytes);
+    buffer.open(QIODevice::WriteOnly);
+    image.save(&buffer, "PNG");
+    return bytes.toBase64();
+}
 
 #endif // IMAGEPROCESSOR_H
