@@ -399,6 +399,9 @@ inline void AppController::setupConnections()
         Q_UNUSED(result);
         m_mainWindow->statusBar()->showMessage("内容已处理并复制", 3000);
     });
+    connect(m_copyProcessor, &CopyProcessor::formatterWarning, this, [this](const QString& message){
+        m_mainWindow->statusBar()->showMessage(message, 5000);
+    });
 }
 
 inline void AppController::onServiceSelected(const QString& id)

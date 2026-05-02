@@ -24,6 +24,7 @@ public:
 signals:
     void finished(const QString& result);
     void error(const QString& message);
+    void formatterWarning(const QString& message);
 
 private slots:
     void onProcessFinished(int exitCode, QProcess::ExitStatus status);
@@ -246,6 +247,7 @@ inline QString CopyProcessor::runFormatter(const QString& text)
     proc.startCommand(cmd);
     if (!proc.waitForStarted(3000)) {
         qWarning() << "Formatter failed to start:" << cmd;
+        emit formatterWarning("格式化工具启动失败: " + cmd);
         return text;
     }
     proc.write(text.toUtf8());
@@ -253,14 +255,20 @@ inline QString CopyProcessor::runFormatter(const QString& text)
     if (!proc.waitForFinished(10000)) {
         qWarning() << "Formatter timed out:" << cmd;
         proc.kill();
+        emit formatterWarning("格式化工具超时未响应");
         return text;
     }
 
     if (proc.exitStatus() == QProcess::NormalExit && proc.exitCode() == 0) {
         QString result = QString::fromUtf8(proc.readAllStandardOutput());
         if (!result.isEmpty()) return result;
+        emit formatterWarning("格式化工具返回了空内容，使用原始文本");
     } else {
-        qWarning() << "Formatter exited with error:" << proc.readAllStandardError();
+        QByteArray stderrOutput = proc.readAllStandardError();
+        QString errMsg = QString::fromUtf8(stderrOutput).trimmed();
+        if (errMsg.length() > 200) errMsg = errMsg.left(200) + "...";
+        qWarning() << "Formatter exited with error:" << stderrOutput;
+        emit formatterWarning("格式化工具执行出错: " + errMsg);
     }
     return text;
 }
