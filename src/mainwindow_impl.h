@@ -177,6 +177,9 @@ inline void MainWindow::setupMenuBar()
         scriptLayout->addWidget(m_scriptTableCheck);
         m_scriptPureMathCheck = new QCheckBox("纯公式");
         scriptLayout->addWidget(m_scriptPureMathCheck);
+        scriptLayout->addWidget(new QLabel("|"));
+        m_formatterToolCheck = new QCheckBox("格式化");
+        scriptLayout->addWidget(m_formatterToolCheck);
         m_mainToolBar->addWidget(scriptWidget);
 
         SettingsManager* s = SettingsManager::instance();
@@ -185,9 +188,11 @@ inline void MainWindow::setupMenuBar()
         connect(m_scriptFormulaCheck, &QCheckBox::toggled, s, &SettingsManager::setFormulaProcessorEnabled);
         connect(m_scriptTableCheck, &QCheckBox::toggled, s, &SettingsManager::setTableProcessorEnabled);
         connect(m_scriptPureMathCheck, &QCheckBox::toggled, s, &SettingsManager::setPureMathProcessorEnabled);
+        connect(m_formatterToolCheck, &QCheckBox::toggled, s, &SettingsManager::setFormatterEnabled);
 
         updateScriptCheckboxes();
         connect(s, &SettingsManager::autoExternalProcessBeforeCopyChanged, this, &MainWindow::updateScriptCheckboxes);
+        connect(s, &SettingsManager::formatterEnabledChanged, this, &MainWindow::updateScriptCheckboxes);
 }
 
 inline void MainWindow::setupConnections()
@@ -332,18 +337,21 @@ inline void MainWindow::updateScriptCheckboxes()
     m_scriptFormulaCheck->blockSignals(true);
     m_scriptTableCheck->blockSignals(true);
     m_scriptPureMathCheck->blockSignals(true);
+    m_formatterToolCheck->blockSignals(true);
 
     m_scriptGlobalCheck->setChecked(s->autoExternalProcessBeforeCopy());
     m_scriptTextCheck->setChecked(s->textProcessorEnabled());
     m_scriptFormulaCheck->setChecked(s->formulaProcessorEnabled());
     m_scriptTableCheck->setChecked(s->tableProcessorEnabled());
     m_scriptPureMathCheck->setChecked(s->pureMathProcessorEnabled());
+    m_formatterToolCheck->setChecked(s->formatterEnabled());
 
     m_scriptGlobalCheck->blockSignals(false);
     m_scriptTextCheck->blockSignals(false);
     m_scriptFormulaCheck->blockSignals(false);
     m_scriptTableCheck->blockSignals(false);
     m_scriptPureMathCheck->blockSignals(false);
+    m_formatterToolCheck->blockSignals(false);
 }
 
 inline QString MainWindow::currentMarkdownSource() const

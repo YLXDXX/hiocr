@@ -137,6 +137,7 @@ private:
     QCheckBox* m_scriptFormulaCheck = nullptr;
     QCheckBox* m_scriptTableCheck = nullptr;
     QCheckBox* m_scriptPureMathCheck = nullptr;
+    QCheckBox* m_formatterToolCheck = nullptr;
 
     bool m_isStreaming = false;
     QAction* m_abortAction = nullptr;
