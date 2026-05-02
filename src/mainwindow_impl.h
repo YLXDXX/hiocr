@@ -638,4 +638,11 @@ inline void MainWindow::setCurrentServiceName(const QString& name)
     }
 }
 
+inline void MainWindow::setCopyProcessor(CopyProcessor* processor)
+{
+    if (m_copyBar) {
+        m_copyBar->setCopyProcessor(processor);
+    }
+}
+
 #endif // MAINWINDOW_IMPL_H

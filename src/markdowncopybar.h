@@ -22,6 +22,7 @@ public:
     void setOriginalRecognizeType(ContentType type);
 
     void setCurrentServiceName(const QString& name);
+    void setCopyProcessor(CopyProcessor* processor);
 
     void executeCopy(const QString& text);
 
@@ -56,7 +57,6 @@ inline MarkdownCopyBar::MarkdownCopyBar(QWidget* parent)
 : QWidget(parent), m_currentType(ContentType::MixedContent), m_originalRecognizeType(ContentType::Text)
 {
     setupUi();
-    m_processor = new CopyProcessor(this);
 }
 
 inline void MarkdownCopyBar::setupUi()
@@ -113,6 +113,14 @@ inline void MarkdownCopyBar::setCurrentServiceName(const QString& name)
     }
 }
 
+inline void MarkdownCopyBar::setCopyProcessor(CopyProcessor* processor)
+{
+    m_processor = processor;
+    if (m_processor && !m_currentServiceName.isEmpty()) {
+        m_processor->setServiceName(m_currentServiceName);
+    }
+}
+
 inline bool MarkdownCopyBar::isChandraService() const
 {
     return ServiceUtils::isChandraService(m_currentServiceName);
@@ -160,7 +168,7 @@ inline void MarkdownCopyBar::updateButtonState(const QString& content)
 
 inline void MarkdownCopyBar::onCopyOriginal()
 {
-    if (!m_sourceEdit) return;
+    if (!m_sourceEdit || !m_processor) return;
     QString content = m_sourceEdit->toPlainText().trimmed();
 
     if (isChandraService() && content.contains("<math")) {
@@ -198,7 +206,7 @@ inline void MarkdownCopyBar::onCopyOriginal()
 
 inline void MarkdownCopyBar::onCopyInline()
 {
-    if (!m_sourceEdit) return;
+    if (!m_sourceEdit || !m_processor) return;
     QString content = m_sourceEdit->toPlainText().trimmed();
 
     if (isChandraService() && content.contains("<math")) {
@@ -227,7 +235,7 @@ inline void MarkdownCopyBar::onCopyInline()
 
 inline void MarkdownCopyBar::onCopyDisplay()
 {
-    if (!m_sourceEdit) return;
+    if (!m_sourceEdit || !m_processor) return;
     QString content = m_sourceEdit->toPlainText();
 
     if (isChandraService() && content.contains("<math")) {

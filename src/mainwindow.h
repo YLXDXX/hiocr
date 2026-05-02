@@ -62,6 +62,7 @@ public:
     void setCurrentPrompts(const QString& text, const QString& formula, const QString& table);
 
     void setCurrentServiceName(const QString& name);
+    void setCopyProcessor(CopyProcessor* processor);
 
     void startAreaSelection(const QImage& fullImage);
 

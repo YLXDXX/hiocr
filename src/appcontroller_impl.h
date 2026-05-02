@@ -402,6 +402,8 @@ inline void AppController::setupConnections()
     connect(m_copyProcessor, &CopyProcessor::formatterWarning, this, [this](const QString& message){
         m_mainWindow->statusBar()->showMessage(message, 5000);
     });
+
+    m_mainWindow->setCopyProcessor(m_copyProcessor);
 }
 
 inline void AppController::onServiceSelected(const QString& id)
