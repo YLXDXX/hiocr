@@ -227,6 +227,21 @@ public:
     bool floatingBallAlwaysVisible() const;
     void setFloatingBallAlwaysVisible(bool visible);
 
+    // --- LaTeX代码格式化工具设置 ---
+    enum FormatterOrder {
+        FormatFirst = 0,
+        ProcessFirst = 1
+    };
+
+    bool formatterEnabled() const;
+    void setFormatterEnabled(bool enabled);
+
+    QString formatterCommand() const;
+    void setFormatterCommand(const QString& cmd);
+
+    FormatterOrder formatterOrder() const;
+    void setFormatterOrder(FormatterOrder order);
+
 signals:
     void serviceProfilesChanged();
     void currentServiceIdChanged(const QString& id);
@@ -283,6 +298,10 @@ signals:
     void floatingBallSizeChanged(int size);
     void floatingBallAutoHideTimeChanged(int time);
     void floatingBallAlwaysVisibleChanged(bool visible);
+
+    void formatterEnabledChanged(bool enabled);
+    void formatterCommandChanged(const QString& cmd);
+    void formatterOrderChanged(int order);
 
 private:
     explicit SettingsManager(QObject* parent = nullptr);

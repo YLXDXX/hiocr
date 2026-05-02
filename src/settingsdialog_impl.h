@@ -234,6 +234,28 @@ inline void SettingsDialog::setupUi()
 
     behaviorLayout->addWidget(floatingBallGroup);
 
+    QGroupBox* formatterGroup = new QGroupBox("LaTeX代码格式化工具");
+    QFormLayout* fmLayout = new QFormLayout(formatterGroup);
+
+    m_formatterEnabledCheck = new QCheckBox("启用LaTeX代码格式化");
+    fmLayout->addRow(m_formatterEnabledCheck);
+
+    m_formatterCommandEdit = new QLineEdit();
+    m_formatterCommandEdit->setPlaceholderText("例如: latexindent - 或其他格式化命令");
+    fmLayout->addRow("格式化命令:", m_formatterCommandEdit);
+
+    m_formatterOrderCombo = new QComboBox();
+    m_formatterOrderCombo->addItem("先格式化再外部处理", SettingsManager::FormatFirst);
+    m_formatterOrderCombo->addItem("先外部处理再格式化", SettingsManager::ProcessFirst);
+    fmLayout->addRow("执行顺序:", m_formatterOrderCombo);
+
+    connect(m_formatterEnabledCheck, &QCheckBox::toggled, this, [this](bool checked) {
+        m_formatterCommandEdit->setEnabled(checked);
+        m_formatterOrderCombo->setEnabled(checked);
+    });
+
+    behaviorLayout->addWidget(formatterGroup);
+
     // 【新增】历史记录设置区域
     QHBoxLayout* historyLayout = new QHBoxLayout();
     m_saveHistoryCheck = new QCheckBox("保存识别历史记录");
@@ -488,6 +510,14 @@ inline void SettingsDialog::loadSettings()
     m_floatingBallSizeSpin->setValue(s->floatingBallSize());
     m_floatingBallAutoHideTimeSpin->setValue(s->floatingBallAutoHideTime());
     m_floatingBallAlwaysVisibleCheck->setChecked(s->floatingBallAlwaysVisible());
+
+    m_formatterEnabledCheck->setChecked(s->formatterEnabled());
+    m_formatterCommandEdit->setText(s->formatterCommand());
+    m_formatterOrderCombo->setCurrentIndex(
+        m_formatterOrderCombo->findData(static_cast<int>(s->formatterOrder())));
+    bool fmtEnabled = s->formatterEnabled();
+    m_formatterCommandEdit->setEnabled(fmtEnabled);
+    m_formatterOrderCombo->setEnabled(fmtEnabled);
 }
 
 inline void SettingsDialog::populateServiceList()
@@ -630,6 +660,10 @@ inline void SettingsDialog::onSaveClicked()
     s->setFloatingBallAutoHideTime(m_floatingBallAutoHideTimeSpin->value());
     s->setFloatingBallAlwaysVisible(m_floatingBallAlwaysVisibleCheck->isChecked());
 
+    s->setFormatterEnabled(m_formatterEnabledCheck->isChecked());
+    s->setFormatterCommand(m_formatterCommandEdit->text());
+    s->setFormatterOrder(static_cast<SettingsManager::FormatterOrder>(m_formatterOrderCombo->currentData().toInt()));
+
     // 【修复】显式同步到磁盘，防止程序异常退出时设置丢失
     // QSettings 的 setValue 只是写入内存缓存，直到析构才自动同步
     s->sync();
@@ -687,6 +721,13 @@ inline void SettingsDialog::onRestoreDefaults()
     m_floatingBallSizeSpin->setValue(Constants::DEFAULT_FLOATING_BALL_SIZE);
     m_floatingBallAutoHideTimeSpin->setValue(Constants::DEFAULT_FLOATING_BALL_AUTO_HIDE_TIME);
     m_floatingBallAlwaysVisibleCheck->setChecked(Constants::DEFAULT_FLOATING_BALL_ALWAYS_VISIBLE);
+
+    m_formatterEnabledCheck->setChecked(Constants::DEFAULT_FORMATTER_ENABLED);
+    m_formatterCommandEdit->setText(Constants::DEFAULT_FORMATTER_COMMAND);
+    m_formatterOrderCombo->setCurrentIndex(
+        m_formatterOrderCombo->findData(Constants::DEFAULT_FORMATTER_ORDER));
+    m_formatterCommandEdit->setEnabled(false);
+    m_formatterOrderCombo->setEnabled(false);
 }
 
 #endif // SETTINGSDIALOG_IMPL_H

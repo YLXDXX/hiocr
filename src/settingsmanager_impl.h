@@ -44,6 +44,10 @@ inline void SettingsManager::initializeDefaults()
         m_settings.setValue("floating_ball/auto_hide_time", Constants::DEFAULT_FLOATING_BALL_AUTO_HIDE_TIME);
         m_settings.setValue("floating_ball/always_visible", Constants::DEFAULT_FLOATING_BALL_ALWAYS_VISIBLE);
 
+        m_settings.setValue("behavior/formatter_enabled", Constants::DEFAULT_FORMATTER_ENABLED);
+        m_settings.setValue("behavior/formatter_command", Constants::DEFAULT_FORMATTER_COMMAND);
+        m_settings.setValue("behavior/formatter_order", Constants::DEFAULT_FORMATTER_ORDER);
+
         m_settings.setValue("shortcuts/screenshot", Constants::SHORTCUT_SCREENSHOT);
         m_settings.setValue("shortcuts/text_recognize", Constants::SHORTCUT_TEXT);
         m_settings.setValue("shortcuts/formula_recognize", Constants::SHORTCUT_FORMULA);
@@ -179,6 +183,18 @@ inline void SettingsManager::initializeDefaults()
         }
         if (!m_settings.contains("shortcuts/abort")) {
             m_settings.setValue("shortcuts/abort", Constants::SHORTCUT_ABORT);
+            needsSync = true;
+        }
+        if (!m_settings.contains("behavior/formatter_enabled")) {
+            m_settings.setValue("behavior/formatter_enabled", Constants::DEFAULT_FORMATTER_ENABLED);
+            needsSync = true;
+        }
+        if (!m_settings.contains("behavior/formatter_command")) {
+            m_settings.setValue("behavior/formatter_command", Constants::DEFAULT_FORMATTER_COMMAND);
+            needsSync = true;
+        }
+        if (!m_settings.contains("behavior/formatter_order")) {
+            m_settings.setValue("behavior/formatter_order", Constants::DEFAULT_FORMATTER_ORDER);
             needsSync = true;
         }
 
@@ -639,6 +655,39 @@ inline void SettingsManager::setAbortShortcut(const QString& key) {
     if (abortShortcut() != key) {
         m_settings.setValue("shortcuts/abort", key);
         emit shortcutsChanged();
+    }
+}
+
+inline bool SettingsManager::formatterEnabled() const {
+    return m_settings.value("behavior/formatter_enabled", Constants::DEFAULT_FORMATTER_ENABLED).toBool();
+}
+
+inline void SettingsManager::setFormatterEnabled(bool enabled) {
+    if (formatterEnabled() != enabled) {
+        m_settings.setValue("behavior/formatter_enabled", enabled);
+        emit formatterEnabledChanged(enabled);
+    }
+}
+
+inline QString SettingsManager::formatterCommand() const {
+    return m_settings.value("behavior/formatter_command", Constants::DEFAULT_FORMATTER_COMMAND).toString();
+}
+
+inline void SettingsManager::setFormatterCommand(const QString& cmd) {
+    if (formatterCommand() != cmd) {
+        m_settings.setValue("behavior/formatter_command", cmd);
+        emit formatterCommandChanged(cmd);
+    }
+}
+
+inline SettingsManager::FormatterOrder SettingsManager::formatterOrder() const {
+    return static_cast<FormatterOrder>(m_settings.value("behavior/formatter_order", Constants::DEFAULT_FORMATTER_ORDER).toInt());
+}
+
+inline void SettingsManager::setFormatterOrder(FormatterOrder order) {
+    if (formatterOrder() != order) {
+        m_settings.setValue("behavior/formatter_order", static_cast<int>(order));
+        emit formatterOrderChanged(static_cast<int>(order));
     }
 }
 

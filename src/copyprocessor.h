@@ -32,10 +32,12 @@ private:
     bool isPureMathContent(const QString& text) const;
     QString getFinalCommand(ContentType originalType, const QString& text);
     void executeCommand(const QString& command, const QString& text);
+    QString runFormatter(const QString& text);
 
     QProcess* m_currentProcess = nullptr;
     QString m_originalTextForFallback;
     QString m_serviceName;
+    bool m_applyFormatterAfterProcess = false;
 };
 
 // --- Implementation ---
@@ -53,30 +55,55 @@ inline void CopyProcessor::setServiceName(const QString& name)
 inline void CopyProcessor::processAndCopy(const QString& text, ContentType originalType)
 {
     m_originalTextForFallback = text;
+    m_applyFormatterAfterProcess = false;
 
-    if (!SettingsManager::instance()->autoExternalProcessBeforeCopy()) {
-        QGuiApplication::clipboard()->setText(text);
-        emit finished(text);
+    SettingsManager* s = SettingsManager::instance();
+    QString processedText = text;
+    bool fmtEnabled = s->formatterEnabled() && !s->formatterCommand().isEmpty();
+
+    if (fmtEnabled && s->formatterOrder() == SettingsManager::FormatFirst) {
+        processedText = runFormatter(processedText);
+    }
+
+    if (!s->autoExternalProcessBeforeCopy()) {
+        if (fmtEnabled && s->formatterOrder() == SettingsManager::ProcessFirst) {
+            processedText = runFormatter(processedText);
+        }
+        QGuiApplication::clipboard()->setText(processedText);
+        emit finished(processedText);
         return;
     }
 
-    QString command = getFinalCommand(originalType, text);
+    QString command = getFinalCommand(originalType, processedText);
 
     if (command.isEmpty()) {
-        QGuiApplication::clipboard()->setText(text);
-        emit finished(text);
+        if (fmtEnabled && s->formatterOrder() == SettingsManager::ProcessFirst) {
+            processedText = runFormatter(processedText);
+        }
+        QGuiApplication::clipboard()->setText(processedText);
+        emit finished(processedText);
         return;
     }
 
-    executeCommand(command, text);
+    m_applyFormatterAfterProcess = (fmtEnabled && s->formatterOrder() == SettingsManager::ProcessFirst);
+
+    executeCommand(command, processedText);
 }
 
 inline void CopyProcessor::manualProcess(const QString& text, ContentType type)
 {
     m_originalTextForFallback = text;
-    QString command;
+    m_applyFormatterAfterProcess = false;
 
     SettingsManager* s = SettingsManager::instance();
+    QString processedText = text;
+    bool fmtEnabled = s->formatterEnabled() && !s->formatterCommand().isEmpty();
+
+    if (fmtEnabled && s->formatterOrder() == SettingsManager::FormatFirst) {
+        processedText = runFormatter(processedText);
+    }
+
+    QString command;
     switch(type) {
         case ContentType::Text: command = s->textProcessorCommand(); break;
         case ContentType::Formula: command = s->formulaProcessorCommand(); break;
@@ -86,12 +113,17 @@ inline void CopyProcessor::manualProcess(const QString& text, ContentType type)
     }
 
     if (command.isEmpty()) {
-        QGuiApplication::clipboard()->setText(text);
-        emit finished(text);
+        if (fmtEnabled && s->formatterOrder() == SettingsManager::ProcessFirst) {
+            processedText = runFormatter(processedText);
+        }
+        QGuiApplication::clipboard()->setText(processedText);
+        emit finished(processedText);
         return;
     }
 
-    executeCommand(command, text);
+    m_applyFormatterAfterProcess = (fmtEnabled && s->formatterOrder() == SettingsManager::ProcessFirst);
+
+    executeCommand(command, processedText);
 }
 
 inline QString CopyProcessor::getFinalCommand(ContentType originalType, const QString& text)
@@ -192,11 +224,45 @@ inline void CopyProcessor::onProcessFinished(int exitCode, QProcess::ExitStatus 
         emit error("External processor failed: " + err);
     }
 
+    if (m_applyFormatterAfterProcess) {
+        result = runFormatter(result);
+        m_applyFormatterAfterProcess = false;
+    }
+
     QGuiApplication::clipboard()->setText(result);
     emit finished(result);
 
     process->deleteLater();
     m_currentProcess = nullptr;
+}
+
+inline QString CopyProcessor::runFormatter(const QString& text)
+{
+    SettingsManager* s = SettingsManager::instance();
+    QString cmd = s->formatterCommand();
+    if (!s->formatterEnabled() || cmd.isEmpty()) return text;
+
+    QProcess proc;
+    proc.startCommand(cmd);
+    if (!proc.waitForStarted(3000)) {
+        qWarning() << "Formatter failed to start:" << cmd;
+        return text;
+    }
+    proc.write(text.toUtf8());
+    proc.closeWriteChannel();
+    if (!proc.waitForFinished(10000)) {
+        qWarning() << "Formatter timed out:" << cmd;
+        proc.kill();
+        return text;
+    }
+
+    if (proc.exitStatus() == QProcess::NormalExit && proc.exitCode() == 0) {
+        QString result = QString::fromUtf8(proc.readAllStandardOutput());
+        if (!result.isEmpty()) return result;
+    } else {
+        qWarning() << "Formatter exited with error:" << proc.readAllStandardError();
+    }
+    return text;
 }
 
 #endif // COPYPROCESSOR_H

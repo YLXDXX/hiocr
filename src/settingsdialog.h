@@ -112,6 +112,10 @@ private:
     QSpinBox* m_floatingBallSizeSpin;
     QSpinBox* m_floatingBallAutoHideTimeSpin;
     QCheckBox* m_floatingBallAlwaysVisibleCheck;
+
+    QCheckBox* m_formatterEnabledCheck;
+    QLineEdit* m_formatterCommandEdit;
+    QComboBox* m_formatterOrderCombo;
 };
 
 #include "settingsdialog_impl.h"

@@ -113,6 +113,11 @@ namespace Constants {
 
     // 历史记录分页设置
     const int HISTORY_PAGE_SIZE = 50;  // 每页显示的记录条数
+
+    // --- LaTeX代码格式化工具设置 ---
+    const bool DEFAULT_FORMATTER_ENABLED = false;
+    const QString DEFAULT_FORMATTER_COMMAND = "";
+    const int DEFAULT_FORMATTER_ORDER = 0; // 0=先格式化再外部处理, 1=先外部处理再格式化
 }
 
 #endif // CONSTANTS_H
